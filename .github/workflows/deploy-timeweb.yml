@@ -42,5 +42,53 @@ jobs:
 
           # Force IPv4 to avoid "Network is unreachable" errors (AAAA record / IPv6 routing).
           # Use accept-new to populate known_hosts automatically on first connect.
-          ssh -4 -p "${PORT}" -o StrictHostKeyChecking=accept-new "${SSH_TARGET}" \
-            'bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-update.sh'
+          ssh -4 -p "${PORT}" -o StrictHostKeyChecking=accept-new "${SSH_TARGET}" '
+            set -euo pipefail
+
+            PLUGIN_DIR="/home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins"
+            PLUGIN_NAME="betheme-smart-search"
+            REMOTE="git@github.com:ikhm20/betheme-smart-search.git"
+            BRANCH="main"
+            WP_PATH="/home/c/cn30947/wordpress_nb95i/public_html"
+
+            cd "${PLUGIN_DIR}"
+
+            if [ -d "${PLUGIN_NAME}/.git" ]; then
+              echo "Found git repo, updating..."
+              cd "${PLUGIN_NAME}"
+              if [ -f "scripts/timeweb-update.sh" ]; then
+                bash scripts/timeweb-update.sh
+              else
+                git pull --ff-only
+                if command -v wp >/dev/null 2>&1; then
+                  wp --path="${WP_PATH}" cache flush || true
+                  wp --path="${WP_PATH}" transient delete --expired || true
+                  wp --path="${WP_PATH}" transient delete update_plugins || true
+                fi
+              fi
+              exit 0
+            fi
+
+            echo "No git repo found in ${PLUGIN_NAME} (likely updated via ZIP). Re-installing from git..."
+            TMP_DIR="${PLUGIN_NAME}__new_$(date +%F_%H%M%S)"
+            BAK_DIR="${PLUGIN_NAME}__backup_$(date +%F_%H%M%S)"
+
+            git clone --depth 1 --branch "${BRANCH}" "${REMOTE}" "${TMP_DIR}"
+            if [ ! -f "${TMP_DIR}/betheme-smart-search.php" ]; then
+              echo "ERROR: ${TMP_DIR}/betheme-smart-search.php not found; aborting." >&2
+              exit 1
+            fi
+
+            if [ -d "${PLUGIN_NAME}" ]; then
+              mv "${PLUGIN_NAME}" "${BAK_DIR}"
+            fi
+            mv "${TMP_DIR}" "${PLUGIN_NAME}"
+
+            if command -v wp >/dev/null 2>&1; then
+              wp --path="${WP_PATH}" cache flush || true
+              wp --path="${WP_PATH}" transient delete --expired || true
+              wp --path="${WP_PATH}" transient delete update_plugins || true
+            fi
+
+            echo "Done."
+          '
