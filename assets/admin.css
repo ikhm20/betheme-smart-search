@@ -1,0 +1,573 @@
+/**
+ * Admin CSS for BeTheme Smart Search
+ */
+
+.betheme-smart-search-admin {
+    --bss-card-bg: #fff;
+    --bss-border: #e5e7eb;
+    --bss-text: #111827;
+    --bss-muted: #6b7280;
+    --bss-accent: #2271b1;
+    --bss-accent-2: #0a4b78;
+    --bss-radius: 10px;
+}
+
+.betheme-smart-search-admin {
+    margin: 20px 0;
+}
+
+.betheme-smart-search-admin .nav-tab-wrapper {
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 20px;
+}
+
+.betheme-smart-search-admin .nav-tab {
+    background: #f1f1f1;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    color: #555;
+    padding: 8px 16px;
+    text-decoration: none;
+    margin-right: 4px;
+    border-radius: 4px 4px 0 0;
+    transition: background-color 0.2s ease;
+}
+
+.betheme-smart-search-admin .nav-tab:hover {
+    background: #e0e0e0;
+}
+
+.betheme-smart-search-admin .nav-tab-active {
+    background: #fff;
+    border-bottom: 1px solid #fff;
+    color: #000;
+    margin-bottom: -1px;
+}
+
+.betheme-smart-search-admin .tab-content {
+    display: none;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-top: none;
+    padding: 20px;
+    border-radius: 0 0 4px 4px;
+}
+
+.betheme-smart-search-admin .tab-content.active {
+    display: block;
+}
+
+.betheme-smart-search-admin .bss-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+.betheme-smart-search-admin .bss-card {
+    background: var(--bss-card-bg);
+    border: 1px solid var(--bss-border);
+    border-radius: var(--bss-radius);
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.betheme-smart-search-admin .bss-card__header {
+    margin-bottom: 12px;
+}
+
+.betheme-smart-search-admin .bss-card__title {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    color: var(--bss-text);
+}
+
+.betheme-smart-search-admin .bss-card__subtitle {
+    margin: 0;
+    color: var(--bss-muted);
+    font-size: 13px;
+}
+
+.betheme-smart-search-admin .bss-field {
+    margin-top: 14px;
+}
+
+.betheme-smart-search-admin .bss-label {
+    display: block;
+    font-weight: 600;
+    color: var(--bss-text);
+    margin-bottom: 6px;
+}
+
+.betheme-smart-search-admin .bss-code {
+    display: inline-block;
+    padding: 6px 10px;
+    border: 1px solid var(--bss-border);
+    border-radius: 8px;
+    background: #f9fafb;
+    font-size: 12px;
+}
+
+.betheme-smart-search-admin .bss-notice {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--bss-border);
+    background: #f8fafc;
+    color: var(--bss-text);
+}
+
+.betheme-smart-search-admin .bss-notice--info {
+    border-left: 4px solid var(--bss-accent);
+}
+
+.betheme-smart-search-admin .bss-actions {
+    margin-top: 16px;
+}
+
+/* Toggle */
+.betheme-smart-search-admin .bss-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+}
+
+.betheme-smart-search-admin .bss-toggle__input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.betheme-smart-search-admin .bss-toggle__track {
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background: #d1d5db;
+    position: relative;
+    flex: 0 0 auto;
+    transition: background-color 0.15s ease;
+}
+
+.betheme-smart-search-admin .bss-toggle__thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #fff;
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.betheme-smart-search-admin .bss-toggle__label {
+    font-weight: 600;
+    color: var(--bss-text);
+}
+
+.betheme-smart-search-admin .bss-toggle__input:checked + .bss-toggle__track {
+    background: var(--bss-accent);
+}
+
+.betheme-smart-search-admin .bss-toggle__input:checked + .bss-toggle__track .bss-toggle__thumb {
+    transform: translateX(18px);
+}
+
+.betheme-smart-search-admin .bss-toggle__input:focus-visible + .bss-toggle__track {
+    box-shadow: 0 0 0 3px rgba(34, 113, 177, 0.25);
+}
+
+/* Accordion */
+.betheme-smart-search-admin .bss-accordion {
+    margin-top: 16px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.betheme-smart-search-admin .bss-accordion__toggle {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.betheme-smart-search-admin .bss-accordion__title {
+    font-weight: 700;
+    color: var(--bss-text);
+}
+
+.betheme-smart-search-admin .bss-accordion__chevron {
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid var(--bss-muted);
+    border-bottom: 2px solid var(--bss-muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+}
+
+.betheme-smart-search-admin .bss-accordion__toggle[aria-expanded="true"] .bss-accordion__chevron {
+    transform: rotate(-135deg);
+}
+
+.betheme-smart-search-admin .bss-accordion__content {
+    border-top: 1px solid var(--bss-border);
+    padding: 16px;
+}
+
+.betheme-smart-search-admin .bss-advanced__group {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--bss-border);
+}
+
+.betheme-smart-search-admin .bss-advanced__group:last-child {
+    border-bottom: none;
+}
+
+.betheme-smart-search-admin .bss-advanced__group h4 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+}
+
+.betheme-smart-search-admin [data-bss-disabled="true"] {
+    opacity: 0.55;
+}
+
+.betheme-smart-search-admin [data-bss-disabled="true"] input,
+.betheme-smart-search-admin [data-bss-disabled="true"] select,
+.betheme-smart-search-admin [data-bss-disabled="true"] textarea,
+.betheme-smart-search-admin [data-bss-disabled="true"] button {
+    pointer-events: none;
+}
+
+.betheme-smart-search-admin .form-table th {
+    width: 200px;
+    padding: 15px 10px 15px 0;
+    vertical-align: top;
+}
+
+.betheme-smart-search-admin .form-table td {
+    padding: 15px 10px;
+}
+
+.betheme-smart-search-admin .form-table input[type="text"],
+.betheme-smart-search-admin .form-table input[type="number"],
+.betheme-smart-search-admin .form-table select,
+.betheme-smart-search-admin .form-table textarea {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.betheme-smart-search-admin .form-table input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.betheme-smart-search-admin .weight-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.betheme-smart-search-admin .weight-slider {
+    flex: 1;
+    max-width: 200px;
+}
+
+.betheme-smart-search-admin .weight-value {
+    min-width: 30px;
+    text-align: center;
+    font-weight: bold;
+    color: #007cba;
+}
+
+.betheme-smart-search-admin .description {
+    color: #666;
+    font-style: italic;
+    margin-top: 5px;
+    font-size: 13px;
+}
+
+.betheme-smart-search-admin .submit {
+    padding: 20px 0;
+    border-top: 1px solid #eee;
+    margin-top: 20px;
+}
+
+.betheme-smart-search-admin .submit input[type="submit"] {
+    background: #007cba;
+    border: none;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.betheme-smart-search-admin .submit input[type="submit"]:hover {
+    background: #005a87;
+}
+
+.betheme-smart-search-admin .submit input[type="submit"]:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.betheme-smart-search-admin .test-search-section {
+    background: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+.betheme-smart-search-admin .test-search-section h4 {
+    margin-top: 0;
+    color: #23282d;
+}
+
+.betheme-smart-search-admin .test-search-section input[type="text"] {
+    width: 300px;
+    margin-right: 10px;
+}
+
+.betheme-smart-search-admin .test-search-section button {
+    background: #007cba;
+    border: none;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.betheme-smart-search-admin .test-search-section button:hover {
+    background: #005a87;
+}
+
+.betheme-smart-search-admin .test-search-section button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.betheme-smart-search-admin #test-results {
+    margin-top: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.betheme-smart-search-admin #test-results pre {
+    background: #f6f7f7;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    overflow-x: auto;
+}
+
+.betheme-smart-search-admin .cache-section {
+    background: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+.betheme-smart-search-admin .cache-section h4 {
+    margin-top: 0;
+    color: #23282d;
+}
+
+.betheme-smart-search-admin .cache-section button {
+    background: #d63638;
+    border: none;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.betheme-smart-search-admin .cache-section button:hover {
+    background: #b32d2e;
+}
+
+.betheme-smart-search-admin .cache-section button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.betheme-smart-search-admin #cache-status {
+    margin-top: 10px;
+}
+
+.betheme-smart-search-admin .success {
+    color: #46b450;
+    font-weight: bold;
+}
+
+.betheme-smart-search-admin .error {
+    color: #dc3232;
+    font-weight: bold;
+}
+
+.betheme-smart-search-admin .notice {
+    background: #fff;
+    border-left: 4px solid #00a0d2;
+    padding: 12px;
+    margin: 20px 0;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.betheme-smart-search-admin .notice-info {
+    border-left-color: #00a0d2;
+}
+
+.betheme-smart-search-admin .notice-warning {
+    border-left-color: #ffb900;
+}
+
+.betheme-smart-search-admin .notice-error {
+    border-left-color: #dc3232;
+}
+
+.betheme-smart-search-admin .analytics-section {
+    margin: 20px 0;
+}
+
+.betheme-smart-search-admin .analytics-section h4 {
+    color: #23282d;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.betheme-smart-search-admin .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.betheme-smart-search-admin .analytics-card {
+    background: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    padding: 15px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.betheme-smart-search-admin .analytics-card .number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #007cba;
+    display: block;
+}
+
+.betheme-smart-search-admin .analytics-card .label {
+    color: #666;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.betheme-smart-search-admin .diagnostics-section {
+    background: #f9f9f9;
+    border: 1px solid #e5e5e5;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+.betheme-smart-search-admin .diagnostics-section h4 {
+    margin-top: 0;
+    color: #23282d;
+}
+
+.betheme-smart-search-admin .diagnostics-list {
+    list-style: none;
+    padding: 0;
+}
+
+.betheme-smart-search-admin .diagnostics-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.betheme-smart-search-admin .diagnostics-list li:last-child {
+    border-bottom: none;
+}
+
+.betheme-smart-search-admin .diagnostics-list .status {
+    float: right;
+    font-weight: bold;
+}
+
+.betheme-smart-search-admin .diagnostics-list .status.ok {
+    color: #46b450;
+}
+
+.betheme-smart-search-admin .diagnostics-list .status.warning {
+    color: #ffb900;
+}
+
+.betheme-smart-search-admin .diagnostics-list .status.error {
+    color: #dc3232;
+}
+
+/* Responsive design */
+@media (max-width: 782px) {
+    .betheme-smart-search-admin .bss-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .betheme-smart-search-admin .form-table th {
+        width: 100%;
+        display: block;
+        padding-bottom: 5px;
+    }
+
+    .betheme-smart-search-admin .form-table td {
+        display: block;
+        padding-left: 0;
+        padding-top: 0;
+    }
+
+    .betheme-smart-search-admin .form-table input[type="text"],
+    .betheme-smart-search-admin .form-table input[type="number"],
+    .betheme-smart-search-admin .form-table select,
+    .betheme-smart-search-admin .form-table textarea {
+        max-width: 100%;
+    }
+
+    .betheme-smart-search-admin .weight-slider-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .betheme-smart-search-admin .weight-slider {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .betheme-smart-search-admin .test-search-section input[type="text"] {
+        width: 100%;
+        margin-bottom: 10px;
+        margin-right: 0;
+    }
+
+    .betheme-smart-search-admin .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+}

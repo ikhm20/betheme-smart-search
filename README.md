@@ -1,0 +1,170 @@
+# BeTheme Smart Search
+
+A WordPress plugin that enhances BeTheme's search functionality with WooCommerce support, live AJAX search, custom results pages, and marketplace-style search capabilities.
+
+## Features
+
+### ✅ Core Functionality
+- **Enhanced Search Relevance**: Searches by product title, SKU, content, and custom fields
+- **Context-Aware Search**: Different search behavior for shop vs blog contexts
+- **Custom Search Results Page**: Clean, e-commerce focused results template
+- **Live AJAX Search**: Real-time search suggestions with debouncing
+- **Marketplace-Style Search**: Returns products, categories, brands, and suggestions in one response
+
+### ✅ Advanced Features
+- **ACF Integration**: Automatically searches Advanced Custom Fields text content
+- **Caching**: Transient-based caching for improved performance
+- **Analytics**: Tracks search queries, results count, and user context
+- **Mobile Responsive**: Optimized for all device sizes
+
+### ✅ WooCommerce Optimized
+- Product-only search in shop context
+- SKU search support
+- Product attributes search
+- Category and brand filtering
+- Popular products display on no-results
+
+## Installation
+
+1. Download the plugin files
+2. Upload to `/wp-content/plugins/betheme-smart-search/`
+3. Activate the plugin through the WordPress admin
+4. The plugin will automatically override BeTheme's search functionality
+
+## Deployment (Timeweb shared hosting)
+
+If you have Timeweb SSH access, you can deploy without creating ZIP archives.
+
+### First install (clone + atomic swap)
+- Create a private GitHub/GitLab repo with this plugin.
+- On the server, add an SSH key (recommended) and ensure `git` works.
+- Deactivate the plugin in WP Admin (recommended).
+- Run in SSH:
+
+`bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-install.sh git@github.com:USER/REPO.git main`
+
+### Update (1 command)
+`bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-update.sh`
+
+## Configuration
+
+No configuration needed! The plugin works out of the box. However, you can customize:
+
+### BeBuilder editable Search Results page
+Enable `Use Custom Template` in plugin settings and select a page in **Search Results Layout Page**. That page content (including BeBuilder content) will be rendered above the results grid.
+
+Use the shortcode below to control where the results appear:
+
+```
+[betheme_smart_search_results per_page="12"]
+```
+
+### Brand Taxonomy
+If you use a custom brand taxonomy, update the `search_brands()` method in `includes/SearchRest.php`:
+
+```php
+$args = array(
+    'taxonomy' => 'your_brand_taxonomy', // Change this
+    'name__like' => $query,
+    'number' => $limit,
+    'hide_empty' => true
+);
+```
+
+### Search Analytics
+View search analytics in the database table `wp_betheme_search_analytics`.
+
+## API Endpoints
+
+### Live Search
+```
+GET /wp-json/betheme-smart-search/v1/query?q={search_term}&context={shop|blog}&limit={number}
+```
+
+Response format:
+```json
+{
+  "products": [
+    {
+      "id": 123,
+      "title": "Product Name",
+      "url": "https://example.com/product/product-name/",
+      "price": "$29.99",
+      "image": "https://example.com/wp-content/uploads/image.jpg",
+      "sku": "PROD-001",
+      "in_stock": true
+    }
+  ],
+  "categories": [...],
+  "brands": [...],
+  "suggestions": [...]
+}
+```
+
+## File Structure
+
+```
+betheme-smart-search/
+├── betheme-smart-search.php    # Main plugin file
+├── includes/
+│   ├── Helpers.php            # Utility functions
+│   ├── SearchQuery.php        # Search query modifications
+│   ├── SearchRest.php         # REST API endpoints
+│   └── SearchHooks.php        # WordPress hooks and filters
+├── templates/
+│   └── search-results.php     # Custom search results template
+├── assets/
+│   ├── search.js              # AJAX search functionality
+│   └── search.css             # Search styling
+└── README.md                  # This file
+```
+
+## Hooks and Filters
+
+### Available Filters
+- `betheme_smart_search_query_args` - Modify search query arguments
+- `betheme_smart_search_results_template` - Override results template
+- `betheme_smart_search_live_results` - Modify live search results
+
+### Available Actions
+- `betheme_smart_search_before_results` - Before displaying search results
+- `betheme_smart_search_after_results` - After displaying search results
+
+## Performance
+
+- Results are cached for 1 hour using WordPress transients
+- AJAX requests are debounced to prevent excessive API calls
+- Database queries are optimized with proper indexing
+
+## Browser Support
+
+- Chrome 60+
+- Firefox 55+
+- Safari 12+
+- Edge 79+
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## Changelog
+
+### 1.0.0
+- Initial release
+- Basic search enhancement
+- Live search functionality
+- Custom results template
+- ACF integration
+- Analytics and caching
+
+## License
+
+GPL v2 or later
+
+## Support
+
+For support, please create an issue on GitHub or contact the plugin author.

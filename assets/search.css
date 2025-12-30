@@ -1,0 +1,298 @@
+/**
+ * BeTheme Smart Search Styles
+ */
+
+/* Search Results Page */
+.betheme-smart-search-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.betheme-smart-search-header h1 {
+    font-size: 2em;
+    margin-bottom: 10px;
+}
+
+.betheme-smart-search-header span {
+    color: #007cba;
+}
+
+.betheme-smart-search-results {
+    margin-bottom: 40px;
+}
+
+.betheme-smart-search-post {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: #fff;
+    transition: box-shadow 0.3s ease;
+}
+
+.betheme-smart-search-post:hover {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.betheme-smart-search-post .entry-title {
+    margin-bottom: 10px;
+}
+
+.betheme-smart-search-post .entry-title a {
+    text-decoration: none;
+    color: #333;
+    font-size: 1.2em;
+}
+
+.betheme-smart-search-post .entry-title a:hover {
+    color: #007cba;
+}
+
+.betheme-smart-search-post .entry-summary {
+    margin-bottom: 15px;
+    color: #666;
+}
+
+.betheme-smart-search-post .read-more {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #007cba;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+.betheme-smart-search-post .read-more:hover {
+    background: #005a87;
+}
+
+/* No Results Page */
+.betheme-smart-search-no-results {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.betheme-smart-search-no-results h2 {
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.betheme-smart-search-no-results p {
+    font-size: 1.1em;
+    margin-bottom: 30px;
+    color: #666;
+}
+
+.search-form-wrapper {
+    margin-bottom: 40px;
+}
+
+.popular-products {
+    margin-top: 40px;
+}
+
+.popular-products h3 {
+    font-size: 1.4em;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+/* Live Search Styles */
+.betheme-smart-search-live-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.search-loading,
+.search-error {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+.live-search-section {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.live-search-section:last-child {
+    border-bottom: none;
+}
+
+.live-search-section h4 {
+    margin: 0;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    font-size: 0.9em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #666;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.live-search-section ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.live-search-section li {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.live-search-section li:last-child {
+    border-bottom: none;
+}
+
+.live-search-section li a {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    text-decoration: none;
+    color: #333;
+    transition: background 0.2s ease;
+}
+
+.live-search-section li a:hover {
+    background: #f8f9fa;
+}
+
+/* Product Items */
+.product-item img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    margin-right: 12px;
+    border-radius: 4px;
+}
+
+.product-info {
+    flex: 1;
+}
+
+.product-title {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.product-sku {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+.product-price {
+    display: block;
+    font-size: 0.9em;
+    color: #007cba;
+    font-weight: 600;
+}
+
+/* Category and Brand Items */
+.category-name,
+.brand-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.category-count,
+.brand-count {
+    font-size: 0.85em;
+    color: #666;
+    margin-left: 8px;
+}
+
+/* View All Results */
+.view-all-results {
+    padding: 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+.view-all-results a {
+    color: #007cba;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.view-all-results a:hover {
+    text-decoration: underline;
+}
+
+/* No Results */
+.no-results {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .betheme-smart-search-live-results {
+        position: static;
+        border-radius: 0;
+        box-shadow: none;
+        border-left: none;
+        border-right: none;
+    }
+
+    .product-item {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .product-item img {
+        margin-right: 0;
+        margin-bottom: 8px;
+    }
+}
+
+/* Search input UX: keep query + clear button */
+.bss-search-field-wrap {
+    display: contents;
+}
+
+form.form-searchform {
+    position: relative !important;
+}
+
+form.form-searchform input[name="s"] {
+    padding-right: 38px !important;
+}
+
+form.form-searchform .bss-search-clear {
+    position: absolute !important;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 0.9);
+    color: #111;
+    cursor: pointer;
+    line-height: 26px;
+    font-size: 18px;
+    padding: 0;
+    z-index: 2;
+}
+
+form.form-searchform .bss-search-clear:hover {
+    background: #fff;
+}

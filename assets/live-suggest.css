@@ -1,0 +1,105 @@
+/* Live suggestions inside BeTheme live search dropdown */
+
+.bss-live-open .mfn-live-search-box {
+  display: block !important;
+}
+
+.bss-live-open .mfn-live-search-box.hidden {
+  display: block !important;
+}
+
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-exact ul,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-products ul,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-suggestions ul {
+  margin: 0;
+  padding: 0;
+}
+
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-exact .mfn-live-search-heading,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-products .mfn-live-search-heading,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-suggestions .mfn-live-search-heading {
+  opacity: 0.8;
+}
+
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-exact li[data-category="product"] a,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-products li[data-category="product"] a,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-suggestions li[data-category="suggestion"] a {
+  display: block;
+}
+
+.mfn-live-search-box .mfn-live-search-list .bss-skeleton {
+  padding: 10px 0;
+}
+
+.mfn-live-search-box .mfn-live-search-list .bss-skeleton-line {
+  position: relative;
+  display: block;
+  height: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.mfn-live-search-box .mfn-live-search-list .bss-skeleton-shimmer {
+  position: absolute;
+  top: 0;
+  left: -60%;
+  height: 100%;
+  width: 60%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
+  animation: bssShimmer 1.1s infinite;
+}
+
+@keyframes bssShimmer {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+/* History actions (DNS/Ozon-like) */
+.mfn-live-search-box .mfn-live-search-list .bss-history-actions {
+  padding: 6px 0 10px 0;
+}
+
+.mfn-live-search-box .mfn-live-search-list .bss-history-clear {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0.75;
+  font: inherit;
+  text-decoration: underline;
+}
+
+.mfn-live-search-box .mfn-live-search-list .bss-history-item {
+  position: relative;
+}
+
+.mfn-live-search-box .mfn-live-search-list .bss-history-item .bss-history-link {
+  display: block;
+  padding-right: 28px;
+}
+
+.mfn-live-search-box .mfn-live-search-list .bss-history-item .bss-history-remove {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  border: 0;
+  background: rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  line-height: 26px;
+  text-align: center;
+  padding: 0;
+}
+
+.mfn-live-search-box .mfn-live-search-list .bss-history-item .bss-history-remove:hover {
+  background: rgba(0, 0, 0, 0.12);
+}

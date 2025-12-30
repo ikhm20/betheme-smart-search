@@ -1,0 +1,374 @@
+/* Minimal layout helpers for wp-components based admin app */
+
+.betheme-smart-search-admin .bss-app {
+  max-width: 1280px;
+  margin-right: auto;
+}
+
+.betheme-smart-search-admin .bss-app .components-card {
+  border-radius: 12px;
+}
+
+.betheme-smart-search-admin .bss-app .bss-code {
+  display: inline-block;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  font-size: 12px;
+}
+
+.betheme-smart-search-admin .bss-app .bss-muted {
+  color: #6b7280;
+  margin: 0;
+}
+
+.betheme-smart-search-admin .bss-app .bss-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 16px;
+}
+
+.betheme-smart-search-admin .bss-app .bss-table th,
+.betheme-smart-search-admin .bss-app .bss-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+.betheme-smart-search-admin .bss-app .bss-table th {
+  text-align: left;
+  color: #374151;
+  font-weight: 600;
+}
+
+.betheme-smart-search-admin .bss-app .bss-analytics-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 16px;
+}
+
+@media (min-width: 900px) {
+  .betheme-smart-search-admin .bss-app .bss-analytics-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.betheme-smart-search-admin .bss-app .bss-analytics-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.betheme-smart-search-admin .bss-app .bss-analytics-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.betheme-smart-search-admin .bss-app .bss-analytics-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* SPA shell */
+.betheme-smart-search-admin .bss-app.bss-shell {
+  --bss-bg: #f6f7fb;
+  --bss-card-bg: #fff;
+  --bss-border: #e5e7eb;
+  --bss-text: #111827;
+  --bss-muted: #6b7280;
+  --bss-accent: #3858e9;
+  --bss-accent-soft: rgba(56, 88, 233, 0.12);
+
+  color: var(--bss-text);
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--bss-border);
+  border-radius: 14px;
+  background: var(--bss-card-bg);
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-topbar-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-dirty {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-body {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-body.is-nav-collapsed {
+  grid-template-columns: 72px 1fr;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-nav {
+  border: 1px solid var(--bss-border);
+  border-radius: 14px;
+  background: var(--bss-card-bg);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-nav .components-base-control__label {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-nav-header {
+  padding: 10px 12px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #6b7280;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: #1d2327;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-nav-abbr {
+  display: none;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.10);
+  background: rgba(17, 24, 39, 0.03);
+  font-weight: 800;
+  font-size: 12px;
+  color: #111827;
+  flex: 0 0 auto;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-nav-label {
+  min-width: 0;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-body.is-nav-collapsed .bss-nav-link {
+  justify-content: center;
+  padding: 10px 8px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-body.is-nav-collapsed .bss-nav-abbr {
+  display: inline-flex;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-body.is-nav-collapsed .bss-nav-label {
+  display: none;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-body.is-nav-collapsed .bss-nav-link.is-active .bss-nav-abbr {
+  border-color: rgba(56, 88, 233, 0.35);
+  background: rgba(56, 88, 233, 0.10);
+  color: var(--bss-accent);
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-nav-link:hover {
+  background: rgba(17, 24, 39, 0.04);
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-nav-link.is-active {
+  background: var(--bss-accent-soft);
+  color: var(--bss-accent);
+  font-weight: 700;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-main {
+  min-width: 0;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-section-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 4px 0 10px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--bss-border);
+  background: #fff;
+  color: #1d2327;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-tab:hover {
+  background: rgba(17, 24, 39, 0.03);
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-tab.is-active {
+  border-color: rgba(56, 88, 233, 0.35);
+  background: rgba(56, 88, 233, 0.10);
+  color: var(--bss-accent);
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-help {
+  color: var(--bss-muted);
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-card-title {
+  font-size: 14px;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+@media (max-width: 1050px) {
+  .betheme-smart-search-admin .bss-app.bss-shell .bss-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .betheme-smart-search-admin .bss-app.bss-shell .bss-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-stat {
+  border: 1px solid var(--bss-border);
+  border-radius: 14px;
+  background: var(--bss-card-bg);
+  padding: 12px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-stat-label {
+  color: var(--bss-muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-stat-value {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--bss-border);
+  background: #f9fafb;
+  font-size: 12px;
+}
+
+@media (max-width: 960px) {
+  .betheme-smart-search-admin .bss-app.bss-shell .bss-body {
+    grid-template-columns: 1fr;
+  }
+
+  .betheme-smart-search-admin .bss-app.bss-shell .bss-body.is-nav-collapsed {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Toasts */
+.betheme-smart-search-admin .bss-app.bss-shell .bss-toasts {
+  position: fixed;
+  top: 54px;
+  right: 16px;
+  width: min(420px, calc(100vw - 24px));
+  z-index: 99999;
+  pointer-events: none;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-toasts .components-notice {
+  margin: 0 0 8px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-page-actions {
+  flex-wrap: wrap;
+}
+
+.betheme-smart-search-admin .bss-app.bss-shell .bss-json {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  border: 1px solid var(--bss-border);
+  border-radius: 12px;
+  background: #0b1220;
+  color: #e5e7eb;
+  padding: 12px;
+  overflow: auto;
+  max-height: 320px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
