@@ -610,6 +610,21 @@
     true
   );
 
+  // Prevent history action buttons from stealing focus (otherwise focusout may close the dropdown
+  // when the clicked element is removed from DOM during re-render).
+  function preventActionFocus(e) {
+    var t = e && e.target ? e.target : null;
+    if (!t || t.nodeType !== 1) return;
+    if (!t.getAttribute("data-bss-action")) return;
+    if (!active.box || !active.box.contains(t)) return;
+
+    // Prevent default focus move on pointer/mouse down.
+    e.preventDefault();
+  }
+
+  document.addEventListener("pointerdown", preventActionFocus, true);
+  document.addEventListener("mousedown", preventActionFocus, true);
+
   document.addEventListener(
     "mousedown",
     function (e) {
