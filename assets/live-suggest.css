@@ -103,3 +103,15 @@
 .mfn-live-search-box .mfn-live-search-list .bss-history-item .bss-history-remove:hover {
   background: rgba(0, 0, 0, 0.12);
 }
+
+/* Keyboard navigation highlight */
+.mfn-live-search-box .mfn-live-search-list li.bss-nav-active > a,
+.mfn-live-search-box .mfn-live-search-list li.bss-nav-active .bss-history-link {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.mfn-live-search-box .mfn-live-search-list .bss-highlight {
+  background: rgba(255, 214, 0, 0.35);
+  padding: 0 2px;
+  border-radius: 3px;
+}

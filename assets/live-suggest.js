@@ -132,6 +132,37 @@
       .replace(/'/g, "&#039;");
   }
 
+  function escapeRegExp(s) {
+    return String(s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function highlightHtml(text, needle) {
+    var t = String(text || "");
+    var n = String(needle || "").trim();
+    if (!t || !n) return escapeHtml(t);
+
+    var re;
+    try {
+      re = new RegExp(escapeRegExp(n), "ig");
+    } catch (e) {
+      return escapeHtml(t);
+    }
+
+    var parts = t.split(re);
+    if (parts.length <= 1) return escapeHtml(t);
+
+    var matches = t.match(re) || [];
+    var out = "";
+    var i;
+    for (i = 0; i < parts.length; i++) {
+      out += escapeHtml(parts[i]);
+      if (i < matches.length) {
+        out += '<mark class="bss-highlight">' + escapeHtml(matches[i]) + "</mark>";
+      }
+    }
+    return out;
+  }
+
   function headingText(cfg, key, fallback) {
     var s = cfg.strings && cfg.strings[key] ? String(cfg.strings[key]) : "";
     return s || fallback;
@@ -449,7 +480,7 @@
       li.setAttribute("data-category", "suggestion");
       var a = document.createElement("a");
       a.href = buildSearchUrl(input, it.query);
-      a.textContent = it.query;
+      a.innerHTML = highlightHtml(it.query, q);
       li.appendChild(a);
       ul.appendChild(li);
     });
@@ -465,7 +496,7 @@
   function getState(input) {
     var st = perInputState.get(input);
     if (!st) {
-      st = { seq: 0, suggestAbort: null, liveExactAbort: null, liveFullAbort: null };
+      st = { seq: 0, suggestAbort: null, liveExactAbort: null, liveFullAbort: null, navIndex: -1, navQuery: "" };
       perInputState.set(input, st);
     }
     return st;
@@ -563,6 +594,10 @@
 
     var q = String(input.value || "").trim();
     var st = getState(input);
+    if (st.navQuery !== q) {
+      st.navIndex = -1;
+      st.navQuery = q;
+    }
     st.seq += 1;
     var seq = st.seq;
 
@@ -624,6 +659,134 @@
 
   document.addEventListener("pointerdown", preventActionFocus, true);
   document.addEventListener("mousedown", preventActionFocus, true);
+
+  function collectNavAnchors(box) {
+    if (!box) return [];
+    var list = box.querySelector(".mfn-live-search-list");
+    if (!list) return [];
+    var anchors = Array.prototype.slice.call(list.querySelectorAll("a[href]"));
+    return anchors.filter(function (a) {
+      if (!a || a.nodeType !== 1) return false;
+      var li = a.closest ? a.closest("li") : null;
+      if (!li) return false;
+      if (li.classList && li.classList.contains("mfn-live-search-heading")) return false;
+      if (li.style && li.style.display === "none") return false;
+      return true;
+    });
+  }
+
+  function clearNavActive(box) {
+    if (!box) return;
+    var prev = box.querySelectorAll(".bss-nav-active");
+    Array.prototype.forEach.call(prev, function (el) {
+      el.classList.remove("bss-nav-active");
+      if (el.removeAttribute) el.removeAttribute("aria-selected");
+    });
+  }
+
+  function setNavActive(input, box, index) {
+    var st = getState(input);
+    var anchors = collectNavAnchors(box);
+    if (!anchors.length) {
+      clearNavActive(box);
+      st.navIndex = -1;
+      return;
+    }
+
+    var idx = index;
+    if (idx < 0) idx = anchors.length - 1;
+    if (idx >= anchors.length) idx = 0;
+
+    clearNavActive(box);
+    st.navIndex = idx;
+
+    var a = anchors[idx];
+    var li = a.closest ? a.closest("li") : null;
+    if (li && li.classList) {
+      li.classList.add("bss-nav-active");
+      li.setAttribute("aria-selected", "true");
+      if (typeof li.scrollIntoView === "function") {
+        try {
+          li.scrollIntoView({ block: "nearest" });
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  }
+
+  // Keyboard navigation (Ozon/DNS-like): arrows, enter, esc.
+  document.addEventListener(
+    "keydown",
+    function (e) {
+      if (!active.input || !active.box) return;
+      if (e.target !== active.input) return;
+
+      var key = e.key || "";
+      if (key !== "ArrowDown" && key !== "ArrowUp" && key !== "Enter" && key !== "Escape") return;
+
+      var st = getState(active.input);
+      var anchors = collectNavAnchors(active.box);
+
+      if (key === "Escape") {
+        e.preventDefault();
+        setOpenState(active.input, active.box, false);
+        clearNavActive(active.box);
+        st.navIndex = -1;
+        return;
+      }
+
+      if (key === "ArrowDown") {
+        e.preventDefault();
+        if (!anchors.length) return;
+        setNavActive(active.input, active.box, st.navIndex + 1);
+        return;
+      }
+
+      if (key === "ArrowUp") {
+        e.preventDefault();
+        if (!anchors.length) return;
+        setNavActive(active.input, active.box, st.navIndex - 1);
+        return;
+      }
+
+      if (key === "Enter") {
+        if (!anchors.length) return;
+        if (st.navIndex < 0) return; // let normal submit happen
+        var a = anchors[st.navIndex];
+        if (!a || !a.href) return;
+        e.preventDefault();
+        var li = a.closest ? a.closest("li") : null;
+        var q = li && li.getAttribute ? li.getAttribute("data-bss-query") : "";
+        pushHistory(cfg, q || active.input.value || a.textContent || "");
+        window.location.href = a.href;
+      }
+    },
+    true
+  );
+
+  // Save history on any click on a dropdown link (not only on Enter/submit).
+  document.addEventListener(
+    "click",
+    function (e) {
+      var t = e && e.target ? e.target : null;
+      if (!t || t.nodeType !== 1) return;
+      if (!active.box || !active.input) return;
+
+      // Ignore history action buttons.
+      if (t.getAttribute && t.getAttribute("data-bss-action")) return;
+      if (t.closest && t.closest("[data-bss-action]")) return;
+
+      var a = t.tagName === "A" ? t : (t.closest ? t.closest("a") : null);
+      if (!a || !a.href) return;
+      if (!active.box.contains(a)) return;
+
+      var li = a.closest ? a.closest("li") : null;
+      var q = li && li.getAttribute ? li.getAttribute("data-bss-query") : "";
+      pushHistory(cfg, q || active.input.value || a.textContent || "");
+    },
+    true
+  );
 
   document.addEventListener(
     "mousedown",
