@@ -1,12 +1,13 @@
 <?php
 /**
  * Plugin Name: BeTheme Smart Search
- * Plugin URI: https://example.com/betheme-smart-search
+ * Plugin URI: https://github.com/ikhm20/betheme-smart-search
  * Description: Enhances BeTheme search with WooCommerce support, live search, and custom results page.
  * Version: 1.0.0
  * Author: Your Name
  * License: GPL v2 or later
  * Text Domain: betheme-smart-search
+ * Update URI: https://github.com/ikhm20/betheme-smart-search
  */
 
 // Prevent direct access
@@ -19,6 +20,7 @@ define('BETHEME_SMART_SEARCH_VERSION', '1.0.0');
 define('BETHEME_SMART_SEARCH_DIR', plugin_dir_path(__FILE__));
 define('BETHEME_SMART_SEARCH_URL', plugin_dir_url(__FILE__));
 define('BETHEME_SMART_SEARCH_OPTION_NAME', 'betheme_smart_search_options');
+define('BETHEME_SMART_SEARCH_GITHUB_REPO', 'ikhm20/betheme-smart-search');
 
 // Include required files
 require_once BETHEME_SMART_SEARCH_DIR . 'includes/Helpers.php';
@@ -28,6 +30,7 @@ require_once BETHEME_SMART_SEARCH_DIR . 'includes/SearchRest.php';
 require_once BETHEME_SMART_SEARCH_DIR . 'includes/Admin.php';
 require_once BETHEME_SMART_SEARCH_DIR . 'includes/Shortcodes.php';
 require_once BETHEME_SMART_SEARCH_DIR . 'includes/AdminRest.php';
+require_once BETHEME_SMART_SEARCH_DIR . 'includes/Updater.php';
 
 // Initialize the plugin
 class BeThemeSmartSearch {
@@ -46,6 +49,7 @@ class BeThemeSmartSearch {
         new BeThemeSmartSearch_Shortcodes();
         new BeThemeSmartSearch_Admin_REST();
         new BeThemeSmartSearch_Admin($this->get_plugin_name(), $this->get_version());
+        new BeThemeSmartSearch_Updater(__FILE__);
 
         // Enqueue assets only for search results page
         add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));

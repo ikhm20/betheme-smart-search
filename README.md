@@ -46,6 +46,28 @@ If you have Timeweb SSH access, you can deploy without creating ZIP archives.
 ### Update (1 command)
 `bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-update.sh`
 
+## Updates in WP Admin (GitHub Releases)
+
+If you want WordPress to show native update notifications in **Plugins**:
+
+1) Push code to GitHub (this repo).
+2) Bump `Version:` in `betheme-smart-search.php` (and `BETHEME_SMART_SEARCH_VERSION`).
+3) Create a tag and push it:
+
+```bash
+git tag v1.0.1
+git push --tags
+```
+
+GitHub Actions will build `betheme-smart-search.zip` and attach it to a GitHub Release.
+The plugin checks the latest GitHub Release and will show an update in WP Admin.
+
+Tip: on the server you can force an update re-check by running:
+
+```bash
+wp --path=/home/c/cn30947/wordpress_nb95i/public_html transient delete update_plugins
+```
+
 ## Configuration
 
 No configuration needed! The plugin works out of the box. However, you can customize:
