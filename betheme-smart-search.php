@@ -143,7 +143,7 @@ class BeThemeSmartSearch {
                 'debounce_desktop_ms' => !empty($options['live_search_debounce']) ? (int) $options['live_search_debounce'] : 250,
                 'debounce_ms' => !empty($options['live_search_debounce']) ? (int) $options['live_search_debounce'] : 250,
                 'debounce_mobile_ms' => !empty($options['live_search_debounce']) ? max(400, (int) $options['live_search_debounce']) : 500,
-                'min_chars' => 3,
+                'min_chars' => 2,
                 'max_items' => 6,
                 'max_products' => !empty($options['live_search_max_results']) ? (int) $options['live_search_max_results'] : 5,
                 'context' => $ctx === 'shop' ? 'shop' : 'shop',

@@ -193,8 +193,10 @@
     if (!container || !container.classList) return;
     if (open) {
       container.classList.add("bss-live-open");
+      if (box && box.style && box.style.display === "none") box.style.display = "block";
     } else {
       container.classList.remove("bss-live-open");
+      if (box && box.style) box.style.display = "none";
     }
   }
 
@@ -364,6 +366,68 @@
 
     section.style.display = "block";
     reorderSections(box);
+  }
+
+  function getThemeSection(box, className) {
+    var list = box.querySelector(".mfn-live-search-list");
+    if (!list) return null;
+    return list.querySelector("." + className);
+  }
+
+  function showThemeSection(box, className, open) {
+    var section = getThemeSection(box, className);
+    if (!section || !section.style) return;
+    section.style.display = open ? "block" : "none";
+  }
+
+  function showLoadingThemeProducts(cfg, box) {
+    var section = getThemeSection(box, "mfn-live-search-list-shop");
+    if (!section) return;
+    var ul = section.querySelector("ul");
+    if (!ul) return;
+    ul.innerHTML = "";
+    renderHeading(ul, headingText(cfg, "heading_products_generic", "Товары"));
+    renderSkeletonList(ul, Math.min(4, cfg.maxProducts));
+    section.style.display = "block";
+  }
+
+  function renderThemeProducts(cfg, box, products, q) {
+    var section = getThemeSection(box, "mfn-live-search-list-shop");
+    if (!section) return;
+    var ul = section.querySelector("ul");
+    if (!ul) return;
+    ul.innerHTML = "";
+
+    if (!Array.isArray(products) || !products.length) {
+      section.style.display = "none";
+      return;
+    }
+
+    renderHeading(ul, headingText(cfg, "heading_products_generic", "Товары"));
+
+    products.slice(0, cfg.maxProducts).forEach(function (p) {
+      if (!p || !p.url) return;
+      var li = document.createElement("li");
+      li.setAttribute("data-category", "product");
+
+      var imgHtml = p.image ? '<img alt="" src="' + p.image + '" />' : "";
+      var priceHtml = p.price ? String(p.price) : "";
+
+      li.innerHTML =
+        imgHtml +
+        '<div class="mfn-live-search-texts">' +
+        '<a href="' +
+        p.url +
+        '">' +
+        highlightHtml(String(p.title || ""), q) +
+        "</a>" +
+        (priceHtml ? '<span class="mfn-ls-price">' + priceHtml + "</span>" : "") +
+        "</div>";
+
+      ul.appendChild(li);
+    });
+
+    section.style.display = "block";
   }
 
   function renderSuggestions(cfg, input, box, payload) {
@@ -584,7 +648,14 @@
       .then(function (data) {
         if (getState(input).seq !== seq) return;
         var products = data && Array.isArray(data.products) ? data.products : [];
-        renderCodeProducts(cfg, box, products);
+        // Always render products into the theme's Shop section (so we don't depend on Betheme's own live-search relevance).
+        renderThemeProducts(cfg, box, products, q);
+        // Keep legacy "code products" section for SKU-like queries if enabled.
+        if (cfg.showCodeProducts && isCodeLike(q)) {
+          renderCodeProducts(cfg, box, products);
+        } else {
+          hideSection(box, "mfn-live-search-list-bss-products");
+        }
         if (data && data.exact_product) {
           renderExactProduct(cfg, box, data.exact_product);
         }
@@ -621,6 +692,16 @@
           hideSection(box, "mfn-live-search-list-suggestions");
         }
       }
+    }
+
+    // Show product results for text queries too (not only for SKU-like queries).
+    // This makes results stable regardless of word order (we use our REST endpoint).
+    if (cfg.liveUrl && q.length >= cfg.minChars) {
+      showLoadingThemeProducts(cfg, box);
+      fetchLiveFull(seq, input, box, q);
+    } else if (q === "") {
+      // Hide theme products section when query is empty to avoid showing stale results.
+      showThemeSection(box, "mfn-live-search-list-shop", false);
     }
 
     if (cfg.showCodeProducts && cfg.liveUrl && isCodeLike(q) && q.length >= 2) {
