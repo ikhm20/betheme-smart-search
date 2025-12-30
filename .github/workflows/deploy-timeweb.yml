@@ -19,11 +19,16 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.TIMEWEB_SSH_KEY }}
 
-      - name: Add GitHub to known_hosts
+      - name: Add GitHub + Timeweb to known_hosts (IPv4)
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
           ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+          # Some providers publish AAAA records that are not reachable from GitHub runners.
+          # Force IPv4 to avoid "Network is unreachable" errors.
+          PORT="${{ secrets.TIMEWEB_PORT }}"
+          if [ -z "${PORT}" ]; then PORT="22"; fi
+          ssh-keyscan -4 -p "${PORT}" -H "${{ secrets.TIMEWEB_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy (run timeweb-update.sh)
         env:
@@ -37,6 +42,5 @@ jobs:
 
           echo "Deploying to ${SSH_TARGET}:${PORT}"
 
-          ssh -p "${PORT}" -o StrictHostKeyChecking=accept-new "${SSH_TARGET}" \
+          ssh -4 -p "${PORT}" -o StrictHostKeyChecking=yes "${SSH_TARGET}" \
             'bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-update.sh'
-

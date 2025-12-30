@@ -104,6 +104,11 @@ chmod 600 ~/.ssh/authorized_keys
 
 `bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-update.sh`
 
+### Troubleshooting
+
+- If Actions fails with `ssh: connect to host ...: Network is unreachable`, it's usually an IPv6 issue (AAAA record not reachable from GitHub runners). The workflow forces IPv4 (`ssh -4`) to fix it.
+
+
 ## Configuration
 
 No configuration needed! The plugin works out of the box. However, you can customize:
