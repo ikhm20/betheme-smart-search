@@ -15,6 +15,7 @@
       maxItems: Number(cfg.max_items || 6),
       maxProducts: Number(cfg.max_products || 5),
       showCodeProducts: cfg.show_code_products !== false,
+      showSuggestions: !!cfg.show_suggestions,
       storageKey: String(cfg.storage_key || "bss_search_history_v1"),
       strings: cfg.strings || {},
     };
@@ -446,6 +447,13 @@
       return;
     }
 
+    // When user types: optional "related queries" suggestions.
+    if (!cfg.showSuggestions) {
+      section.style.display = "none";
+      ul.innerHTML = "";
+      return;
+    }
+
     // When user types: show only suggestions related to the query.
     var qLower = q.toLowerCase();
     var historyMatches = history
@@ -606,10 +614,12 @@
         showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", "Подсказки", 3);
         fetchSuggestions(seq, input, box, q);
       } else {
-        // While typing: suggestions must be related to input, so don't request "empty query" payload.
-        var q2 = q.length < cfg.minChars ? q : q;
-        showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", "Подсказки", 3);
-        fetchSuggestions(seq, input, box, q2);
+        if (cfg.showSuggestions) {
+          showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", "Подсказки", 3);
+          fetchSuggestions(seq, input, box, q);
+        } else {
+          hideSection(box, "mfn-live-search-list-suggestions");
+        }
       }
     }
 

@@ -542,6 +542,14 @@
               onChange: function (v) {
                 updateOption("live_search_show_code_products", v ? 1 : 0);
               },
+            }),
+            el(CheckboxControl, {
+              label: "Показывать «Похожие запросы» при вводе",
+              help: "Если выключено — подсказки по запросам не показываются во время набора текста. История/популярные остаются при пустом поле.",
+              checked: !!options.live_search_show_suggestions,
+              onChange: function (v) {
+                updateOption("live_search_show_suggestions", v ? 1 : 0);
+              },
             })
           ),
           el(PanelBody, { title: "Кеширование (ускорение)", initialOpen: false },

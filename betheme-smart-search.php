@@ -149,6 +149,7 @@ class BeThemeSmartSearch {
                 'context' => $ctx === 'shop' ? 'shop' : 'shop',
                 'storage_key' => 'bss_search_history_v1',
                 'show_code_products' => !empty($options['live_search_show_code_products']),
+                'show_suggestions' => !empty($options['live_search_show_suggestions']),
                 'strings' => array(
                     'heading_suggestions' => __('Похожие запросы', 'betheme-smart-search'),
                     'heading_history' => __('История поиска', 'betheme-smart-search'),

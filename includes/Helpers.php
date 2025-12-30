@@ -556,6 +556,8 @@ class BeThemeSmartSearch_Helpers {
             'live_search_show_categories' => 1,
             'live_search_show_brands' => 1,
             'live_search_show_code_products' => 1,
+            // Show "related queries" suggestions while typing in the dropdown.
+            'live_search_show_suggestions' => 0,
             'use_custom_template' => 1,
             'enable_caching' => 1,
             'cache_ttl' => 600,
@@ -608,6 +610,7 @@ class BeThemeSmartSearch_Helpers {
         $sanitized['live_search_show_categories'] = !empty($input['live_search_show_categories']) ? 1 : 0;
         $sanitized['live_search_show_brands'] = !empty($input['live_search_show_brands']) ? 1 : 0;
         $sanitized['live_search_show_code_products'] = !empty($input['live_search_show_code_products']) ? 1 : 0;
+        $sanitized['live_search_show_suggestions'] = !empty($input['live_search_show_suggestions']) ? 1 : 0;
 
         // Template settings
         $sanitized['use_custom_template'] = !empty($input['use_custom_template']) ? 1 : 0;
