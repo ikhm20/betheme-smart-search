@@ -24,11 +24,9 @@ jobs:
           set -euo pipefail
           mkdir -p ~/.ssh
           ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-          # Some providers publish AAAA records that are not reachable from GitHub runners.
-          # Force IPv4 to avoid "Network is unreachable" errors.
-          PORT="${{ secrets.TIMEWEB_PORT }}"
-          if [ -z "${PORT}" ]; then PORT="22"; fi
-          ssh-keyscan -4 -p "${PORT}" -H "${{ secrets.TIMEWEB_HOST }}" >> ~/.ssh/known_hosts
+          # NOTE: We don't keyscan the Timeweb host because it may be temporarily unreachable
+          # from GitHub runners, causing this step to fail. We'll use StrictHostKeyChecking=accept-new
+          # in the deploy step instead.
 
       - name: Deploy (run timeweb-update.sh)
         env:
@@ -42,5 +40,7 @@ jobs:
 
           echo "Deploying to ${SSH_TARGET}:${PORT}"
 
-          ssh -4 -p "${PORT}" -o StrictHostKeyChecking=yes "${SSH_TARGET}" \
+          # Force IPv4 to avoid "Network is unreachable" errors (AAAA record / IPv6 routing).
+          # Use accept-new to populate known_hosts automatically on first connect.
+          ssh -4 -p "${PORT}" -o StrictHostKeyChecking=accept-new "${SSH_TARGET}" \
             'bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-update.sh'
