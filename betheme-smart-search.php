@@ -3,7 +3,7 @@
  * Plugin Name: BeTheme Smart Search
  * Plugin URI: https://github.com/ikhm20/betheme-smart-search
  * Description: Enhances BeTheme search with WooCommerce support, live search, and custom results page.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Your Name
  * License: GPL v2 or later
  * Text Domain: betheme-smart-search
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('BETHEME_SMART_SEARCH_VERSION', '1.0.0');
+define('BETHEME_SMART_SEARCH_VERSION', '1.0.1');
 define('BETHEME_SMART_SEARCH_DIR', plugin_dir_path(__FILE__));
 define('BETHEME_SMART_SEARCH_URL', plugin_dir_url(__FILE__));
 define('BETHEME_SMART_SEARCH_OPTION_NAME', 'betheme_smart_search_options');
