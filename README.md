@@ -83,46 +83,9 @@ Tip: on the server you can force an update re-check by running:
 wp --path=/home/c/cn30947/wordpress_nb95i/public_html transient delete update_plugins
 ```
 
-## Auto deploy to Timeweb (GitHub Actions)
+## Notes
 
-If you want the server to auto-update after every `git push` to `main` (no ZIP uploads):
-
-1) Create a dedicated SSH keypair for GitHub Actions (do this on your PC, not on the server):
-
-```bash
-ssh-keygen -t ed25519 -C "github-actions-timeweb" -f timeweb_github_actions -N ""
-```
-
-2) Add the public key to the server user `authorized_keys`:
-
-```bash
-cat timeweb_github_actions.pub
-```
-
-Copy that line to Timeweb:
-
-```bash
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-echo 'PASTE_PUBLIC_KEY_HERE' >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-```
-
-3) Add GitHub Actions secrets in your repo:
-
-- `TIMEWEB_HOST` (example: `vh324.timeweb.ru`)
-- `TIMEWEB_USER` (example: `cn30947`)
-- `TIMEWEB_PORT` (optional, default `22`)
-- `TIMEWEB_SSH_KEY` (the private key file contents from `timeweb_github_actions`)
-
-4) Push to `main`. Workflow `.github/workflows/deploy-timeweb.yml` will SSH to Timeweb and run:
-
-`bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-update.sh`
-
-### Troubleshooting
-
-- If Actions fails with `ssh: connect to host ...: Network is unreachable`, it's usually an IPv6 issue (AAAA record not reachable from GitHub runners). The workflow forces IPv4 (`ssh -4`) to fix it.
-- If Actions fails with `Connection timed out`, it's usually shared-hosting firewall/throttling from GitHub runner IPs. Use **Timeweb Cron** (above) for reliable auto-updates.
+- Auto-deploy via GitHub Actions SSH is intentionally not included (shared hosting often blocks GitHub runner IPs). Use **Timeweb Cron** (above) for reliable auto-updates.
 
 
 ## Configuration
