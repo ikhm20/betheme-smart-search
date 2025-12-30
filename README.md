@@ -42,9 +42,12 @@ GitHub Actions → SSH can be unstable on shared hosting (often blocked/throttle
 https://hosting.timeweb.ru/crontab/create
 
 1) Create a cron task (example: every 2 minutes).
-2) Command:
+2) Command / file to run:
 
-`bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-cron.sh`
+- If Timeweb Cron lets you run a command:  
+  `bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-cron.sh`
+- If Timeweb Cron only lets you choose a file (and runs it via PHP):  
+  `/home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-cron.php`
 
 Logs are written to:
 
