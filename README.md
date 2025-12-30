@@ -35,6 +35,21 @@ A WordPress plugin that enhances BeTheme's search functionality with WooCommerce
 
 If you have Timeweb SSH access, you can deploy without creating ZIP archives.
 
+### Auto-update via Timeweb Cron (recommended)
+
+GitHub Actions → SSH can be unstable on shared hosting (often blocked/throttled from GitHub runner IPs). The most reliable approach is to let **the server pull updates itself** on a schedule via Timeweb Cron panel:
+
+https://hosting.timeweb.ru/crontab/create
+
+1) Create a cron task (example: every 2 minutes).
+2) Command:
+
+`bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-cron.sh`
+
+Logs are written to:
+
+`/tmp/betheme-smart-search-cron.log`
+
 ### First install (clone + atomic swap)
 - Create a private GitHub/GitLab repo with this plugin.
 - On the server, add an SSH key (recommended) and ensure `git` works.
@@ -107,6 +122,7 @@ chmod 600 ~/.ssh/authorized_keys
 ### Troubleshooting
 
 - If Actions fails with `ssh: connect to host ...: Network is unreachable`, it's usually an IPv6 issue (AAAA record not reachable from GitHub runners). The workflow forces IPv4 (`ssh -4`) to fix it.
+- If Actions fails with `Connection timed out`, it's usually shared-hosting firewall/throttling from GitHub runner IPs. Use **Timeweb Cron** (above) for reliable auto-updates.
 
 
 ## Configuration
