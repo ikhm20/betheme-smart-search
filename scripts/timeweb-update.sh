@@ -6,7 +6,14 @@ set -euo pipefail
 # Usage (in Timeweb SSH webconsole):
 #   bash scripts/timeweb-update.sh
 
-PLUGIN_DIR="/home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search"
+# Resolve plugin dir relative to this script (portable across Timeweb accounts/paths)
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+PLUGIN_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd -P)"
+
+# Allow override (useful for testing)
+PLUGIN_DIR="${BETHEME_SMART_SEARCH_PLUGIN_DIR:-${PLUGIN_DIR}}"
+
+# Infer WP path from plugin path: /.../wp-content/plugins/<plugin>
 WP_PATH="${PLUGIN_DIR%/wp-content/plugins/*}"
 
 export PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"

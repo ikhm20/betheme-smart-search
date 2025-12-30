@@ -50,6 +50,8 @@ Logs are written to:
 
 `/tmp/betheme-smart-search-cron.log`
 
+Note: `scripts/timeweb-cron.sh` and `scripts/timeweb-update.sh` auto-detect the plugin directory (relative to themselves), so they work even if your Timeweb path changes.
+
 ### First install (clone + atomic swap)
 - Create a private GitHub/GitLab repo with this plugin.
 - On the server, add an SSH key (recommended) and ensure `git` works.

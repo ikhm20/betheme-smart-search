@@ -169,7 +169,7 @@ class BeThemeSmartSearch_REST {
         }
 
         if ($context === 'shop' && BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
-            $payload['products'] = $this->search_products($variants[0], $limit);
+            $payload['products'] = $this->search_products_v2($variants[0], $limit);
             if (!empty($this->options['live_search_show_categories'])) {
                 $payload['categories'] = $this->search_categories($variants[0], min(10, $limit));
             }
@@ -426,7 +426,7 @@ class BeThemeSmartSearch_REST {
 
         // Search products
         if ($context === 'shop' && BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
-            $results['products'] = $this->search_products($query, $limit);
+            $results['products'] = $this->search_products_v2($query, $limit);
         }
 
         // Search categories
@@ -540,6 +540,302 @@ class BeThemeSmartSearch_REST {
     }
 
     /**
+     * Improved live-search product lookup.
+     *
+     * Goals:
+     * - Stable results for multi-word queries regardless of word order.
+     * - Avoid losing relevant results due to MySQL relevance ordering when `posts_per_page` is small.
+     * - Keep it fast for ~2000 products by limiting candidate IDs and using `no_found_rows` + `fields=ids`.
+     */
+    private function search_products_v2($query, $limit) {
+        if (!BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
+            return array();
+        }
+
+        $query = is_string($query) ? trim($query) : '';
+        $limit = absint($limit);
+        if ($limit < 1) {
+            $limit = 5;
+        }
+
+        if ($query === '') {
+            return array();
+        }
+
+        $tokenize = function ($value) {
+            if (!is_string($value)) {
+                return array();
+            }
+            $tokens = preg_split('/\\s+/u', trim($value), -1, PREG_SPLIT_NO_EMPTY);
+            if (!is_array($tokens)) {
+                return array();
+            }
+            $tokens = array_values(array_filter(array_map('trim', $tokens)));
+            return $tokens;
+        };
+
+        $normalize_code = function ($value) {
+            $value = is_string($value) ? trim($value) : '';
+            if ($value === '') {
+                return '';
+            }
+            $value = str_replace(array(' ', "\t", "\n", "\r", '-', '–', '—', '_'), '', $value);
+            return strtoupper($value);
+        };
+
+        $has_mb = function_exists('mb_strtolower') && function_exists('mb_strlen') && function_exists('mb_stripos');
+        $to_lc = function ($value) use ($has_mb) {
+            $value = (string) $value;
+            return $has_mb ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+        };
+        $len = function ($value) use ($has_mb) {
+            $value = (string) $value;
+            return $has_mb ? mb_strlen($value, 'UTF-8') : strlen($value);
+        };
+        $contains_ci = function ($haystack, $needle) use ($has_mb, $to_lc) {
+            $haystack = (string) $haystack;
+            $needle = (string) $needle;
+            if ($needle === '' || $haystack === '') {
+                return false;
+            }
+            if ($has_mb) {
+                return mb_stripos($haystack, $needle, 0, 'UTF-8') !== false;
+            }
+            return strpos($to_lc($haystack), $to_lc($needle)) !== false;
+        };
+
+        $tokens = $tokenize($query);
+        $tokens_lc = array();
+        foreach ($tokens as $t) {
+            if ($t === '') {
+                continue;
+            }
+            $tokens_lc[] = $to_lc($t);
+        }
+        $tokens_lc = array_values(array_unique(array_filter($tokens_lc)));
+
+        $variants = BeThemeSmartSearch_Helpers::build_query_variants($query);
+        if (empty($variants)) {
+            $variants = array($query);
+        }
+
+        $is_code_like = BeThemeSmartSearch_Helpers::is_code_like_query($query);
+        $mode = BeThemeSmartSearch_Helpers::normalize_code_match_mode(isset($this->options['code_match_mode']) ? $this->options['code_match_mode'] : null);
+        $meta_keys = BeThemeSmartSearch_Helpers::get_product_meta_keys($this->options);
+        $meta_keys = is_array($meta_keys) ? array_values(array_filter($meta_keys)) : array();
+
+        $meta_query = null;
+        if ($is_code_like && !empty($meta_keys)) {
+            $meta_query = array('relation' => 'OR');
+
+            foreach ($meta_keys as $key) {
+                $key = sanitize_text_field($key);
+                if ($key === '') {
+                    continue;
+                }
+
+                // Attributes meta is huge; restrict to original query only.
+                if ($key === '_product_attributes') {
+                    $meta_query[] = array('key' => $key, 'value' => $variants[0], 'compare' => 'LIKE');
+                    continue;
+                }
+
+                foreach ($variants as $v) {
+                    $v = is_string($v) ? trim($v) : '';
+                    if ($v === '') {
+                        continue;
+                    }
+
+                    if ($mode === 'exact') {
+                        $meta_query[] = array('key' => $key, 'value' => $v, 'compare' => '=');
+                        continue;
+                    }
+
+                    if ($mode === 'startswith') {
+                        $pattern = '^' . preg_quote($v, '/');
+                        $meta_query[] = array('key' => $key, 'value' => $pattern, 'compare' => 'REGEXP');
+                        continue;
+                    }
+
+                    $meta_query[] = array('key' => $key, 'value' => $v, 'compare' => 'LIKE');
+                }
+            }
+        }
+
+        $max_candidates = max(60, $limit * 20);
+        $max_candidates = min(160, $max_candidates);
+
+        $query_ids = function ($search_term, $per_page, $meta_query_for_term = null) {
+            $search_term = is_string($search_term) ? trim($search_term) : '';
+            if ($search_term === '' || $per_page < 1) {
+                return array();
+            }
+
+            $args = array(
+                'post_type' => 'product',
+                'post_status' => 'publish',
+                'posts_per_page' => (int) $per_page,
+                's' => $search_term,
+                'fields' => 'ids',
+                'no_found_rows' => true,
+                'ignore_sticky_posts' => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+                // Avoid theme/plugin "search tweaks" that can change token logic (AND/OR) and relevance.
+                'suppress_filters' => true,
+            );
+
+            if (is_array($meta_query_for_term) && count($meta_query_for_term) > 1) {
+                $args['meta_query'] = $meta_query_for_term;
+            }
+
+            $q = new WP_Query($args);
+            $ids = is_array($q->posts) ? $q->posts : array();
+            $ids = array_map('intval', $ids);
+            $ids = array_values(array_unique(array_filter($ids)));
+            return $ids;
+        };
+
+        $candidate_ids = array();
+
+        // Stage 1: full query (phrase).
+        $candidate_ids = array_merge($candidate_ids, $query_ids($query, $max_candidates, $meta_query));
+        $candidate_ids = array_values(array_unique($candidate_ids));
+
+        // Stage 2: add a couple of query variants (synonyms/layout) if enabled.
+        if (!$is_code_like && count($variants) > 1 && count($candidate_ids) < $max_candidates) {
+            $extra_variants = array_slice($variants, 1, 2);
+            foreach ($extra_variants as $v) {
+                if (count($candidate_ids) >= $max_candidates) {
+                    break;
+                }
+                $more = $query_ids($v, $max_candidates - count($candidate_ids), null);
+                if (!empty($more)) {
+                    $candidate_ids = array_values(array_unique(array_merge($candidate_ids, $more)));
+                }
+            }
+        }
+
+        // Stage 3: multi-word widening (order-independent).
+        if (!$is_code_like && count($tokens_lc) > 1 && count($candidate_ids) < $max_candidates) {
+            $token_limit = min(4, count($tokens_lc));
+            for ($i = 0; $i < $token_limit; $i++) {
+                if (count($candidate_ids) >= $max_candidates) {
+                    break;
+                }
+                $tok = $tokens[$i] ?? '';
+                $tok = is_string($tok) ? trim($tok) : '';
+                if ($tok === '') {
+                    continue;
+                }
+                // Avoid very short tokens that explode result sets.
+                if ($len($tok) < 2) {
+                    continue;
+                }
+                $more = $query_ids($tok, $max_candidates - count($candidate_ids), null);
+                if (!empty($more)) {
+                    $candidate_ids = array_values(array_unique(array_merge($candidate_ids, $more)));
+                }
+            }
+        }
+
+        if (empty($candidate_ids)) {
+            return array();
+        }
+
+        $products = array();
+        foreach ($candidate_ids as $product_id) {
+            $product_id = (int) $product_id;
+            if ($product_id <= 0) {
+                continue;
+            }
+
+            $product = wc_get_product($product_id);
+            if (!$product) {
+                continue;
+            }
+
+            $products[] = array(
+                'id' => $product_id,
+                'title' => get_the_title($product_id),
+                'url' => get_permalink($product_id),
+                'price' => $product->get_price_html(),
+                'image' => get_the_post_thumbnail_url($product_id, 'thumbnail'),
+                'sku' => $product->get_sku(),
+                'in_stock' => $product->is_in_stock(),
+            );
+        }
+
+        if (empty($products)) {
+            return array();
+        }
+
+        $needle_code = $normalize_code($query);
+        $query_lc = $to_lc($query);
+
+        $score_product = function ($p) use ($tokens_lc, $needle_code, $query_lc, $normalize_code, $to_lc, $contains_ci) {
+            $score = 0;
+
+            $title = isset($p['title']) ? (string) $p['title'] : '';
+            $title_lc = $title !== '' ? $to_lc($title) : '';
+
+            $sku = isset($p['sku']) ? (string) $p['sku'] : '';
+            $sku_code = $normalize_code($sku);
+
+            if ($needle_code !== '' && $sku_code !== '') {
+                if ($sku_code === $needle_code) {
+                    $score += 120;
+                } elseif (strpos($sku_code, $needle_code) === 0) {
+                    $score += 80;
+                } elseif (strpos($sku_code, $needle_code) !== false) {
+                    $score += 50;
+                }
+            }
+
+            if ($title_lc !== '' && $query_lc !== '' && $contains_ci($title_lc, $query_lc)) {
+                $score += 30;
+            }
+
+            if (!empty($tokens_lc) && $title_lc !== '') {
+                $matched = 0;
+                foreach ($tokens_lc as $t) {
+                    if ($t === '') {
+                        continue;
+                    }
+                    if ($contains_ci($title_lc, $t)) {
+                        $matched++;
+                        $score += 12;
+                    }
+                }
+
+                if ($matched > 0 && $matched === count($tokens_lc)) {
+                    // Strong boost when all words are present regardless of their order.
+                    $score += 80;
+                }
+            }
+
+            if (!empty($p['in_stock'])) {
+                $score += 6;
+            } else {
+                $score -= 15;
+            }
+
+            return $score;
+        };
+
+        usort($products, function ($a, $b) use ($score_product) {
+            $sa = $score_product($a);
+            $sb = $score_product($b);
+            if ($sa === $sb) {
+                return strcasecmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''));
+            }
+            return $sb <=> $sa;
+        });
+
+        return array_slice($products, 0, $limit);
+    }
+
+    /**
      * Search products
      */
     private function search_products($query, $limit) {
@@ -647,6 +943,13 @@ class BeThemeSmartSearch_REST {
 
         if (is_array($meta_query) && count($meta_query) > 1) {
             $args['meta_query'] = $meta_query;
+        }
+
+        // For multi-word queries, request a larger candidate set so relevant items aren't pushed out by title relevance.
+        // We'll rank and trim back to `$limit` after scoring.
+        $tokens = preg_split('/\\s+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY);
+        if (is_array($tokens) && count($tokens) > 1) {
+            $args['posts_per_page'] = max($limit, min(80, $limit * 12));
         }
 
         $products_query = new WP_Query($args);

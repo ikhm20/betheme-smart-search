@@ -1,5 +1,7 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
+# Best-effort pipefail when running under bash (ignored under sh).
+( set -o pipefail ) 2>/dev/null || true
 
 # Timeweb cron wrapper for safe auto-update.
 #
@@ -12,9 +14,18 @@ set -euo pipefail
 
 export PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-PLUGIN_DIR="/home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search"
 LOG_FILE="/tmp/betheme-smart-search-cron.log"
 LOCK_DIR="/tmp/betheme-smart-search-cron.lock"
+
+# Always write all cron output to the log file so Timeweb won't email stdout/stderr.
+exec >>"${LOG_FILE}" 2>&1
+
+# Resolve plugin directory relative to this script so it works on any Timeweb account/path.
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
+PLUGIN_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd -P)"
+
+# Allow override (useful for testing)
+PLUGIN_DIR="${BETHEME_SMART_SEARCH_PLUGIN_DIR:-${PLUGIN_DIR}}"
 
 if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
   # Another run is in progress. Exit silently.
@@ -32,5 +43,4 @@ trap cleanup EXIT
   cd "${PLUGIN_DIR}"
   bash "${PLUGIN_DIR}/scripts/timeweb-update.sh"
   echo "[$(date -Is)] Cron run end"
-} >> "${LOG_FILE}" 2>&1
-
+}
