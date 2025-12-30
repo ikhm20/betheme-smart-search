@@ -543,6 +543,38 @@ class BeThemeSmartSearch_REST {
      * Search products
      */
     private function search_products($query, $limit) {
+        // Normalize multi-word queries to reduce "word order" issues in themes/plugins that tweak search relevance.
+        // Heuristic: Russian (Cyrillic) tokens first, then numeric/other, then Latin tokens.
+        $query = is_string($query) ? trim($query) : '';
+        if ($query !== '' && preg_match('/\\s/u', $query)) {
+            $tokens = preg_split('/\\s+/u', $query, -1, PREG_SPLIT_NO_EMPTY);
+            $tokens = is_array($tokens) ? array_values(array_filter(array_map('trim', $tokens))) : array();
+            if (count($tokens) > 1) {
+                $cyr = array();
+                $other = array();
+                $lat = array();
+
+                foreach ($tokens as $tok) {
+                    if ($tok === '') {
+                        continue;
+                    }
+                    if (preg_match('/[А-Яа-яЁё]/u', $tok)) {
+                        $cyr[] = $tok;
+                    } elseif (preg_match('/[A-Za-z]/', $tok)) {
+                        $lat[] = $tok;
+                    } else {
+                        $other[] = $tok;
+                    }
+                }
+
+                $ordered = array_merge($cyr, $other, $lat);
+                $ordered = array_values(array_filter($ordered));
+                if (!empty($ordered)) {
+                    $query = implode(' ', $ordered);
+                }
+            }
+        }
+
         $variants = BeThemeSmartSearch_Helpers::build_query_variants($query);
         if (empty($variants)) {
             $variants = array($query);
@@ -597,11 +629,20 @@ class BeThemeSmartSearch_REST {
             }
         }
 
+        // Important: this query powers the live-search dropdown.
+        // We suppress filters to avoid theme/plugin "search tweaks" that can change token logic (AND/OR) and relevance,
+        // which caused word-order dependent results (e.g. "Корпус Pandora" vs "Pandora корпус").
         $args = array(
             'post_type' => 'product',
             'post_status' => 'publish',
             'posts_per_page' => $limit,
-            's' => $query
+            's' => $query,
+            'fields' => 'ids',
+            'no_found_rows' => true,
+            'ignore_sticky_posts' => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+            'suppress_filters' => true,
         );
 
         if (is_array($meta_query) && count($meta_query) > 1) {
@@ -611,24 +652,30 @@ class BeThemeSmartSearch_REST {
         $products_query = new WP_Query($args);
         $products = array();
 
-        if ($products_query->have_posts()) {
-            while ($products_query->have_posts()) {
-                $products_query->the_post();
-                $product = wc_get_product(get_the_ID());
+        $ids = $products_query->posts;
+        if (is_array($ids) && !empty($ids)) {
+            foreach ($ids as $product_id) {
+                $product_id = (int) $product_id;
+                if ($product_id <= 0) {
+                    continue;
+                }
+
+                $product = wc_get_product($product_id);
+                if (!$product) {
+                    continue;
+                }
 
                 $products[] = array(
-                    'id' => get_the_ID(),
-                    'title' => get_the_title(),
-                    'url' => get_permalink(),
+                    'id' => $product_id,
+                    'title' => get_the_title($product_id),
+                    'url' => get_permalink($product_id),
                     'price' => $product->get_price_html(),
-                    'image' => get_the_post_thumbnail_url(get_the_ID(), 'thumbnail'),
+                    'image' => get_the_post_thumbnail_url($product_id, 'thumbnail'),
                     'sku' => $product->get_sku(),
-                    'in_stock' => $product->is_in_stock()
+                    'in_stock' => $product->is_in_stock(),
                 );
             }
         }
-
-        wp_reset_postdata();
 
         // Smart ordering: push exact SKU matches and in-stock items to the top.
         if (!empty($products)) {
