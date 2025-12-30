@@ -226,3 +226,5 @@ GPL v2 or later
 ## Support
 
 For support, please create an issue on GitHub or contact the plugin author.
+
+deploy test
