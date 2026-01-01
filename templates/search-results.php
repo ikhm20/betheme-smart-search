@@ -13,8 +13,11 @@ get_header(); ?>
             <div class="entry-content">
 
                 <?php
-                $options = BeThemeSmartSearch_Helpers::get_options();
-                $layout_page_id = !empty($options['results_layout_page_id']) ? absint($options['results_layout_page_id']) : 0;
+                $options = BeThemeSmartSearch_Support_Options::get();
+                $defaults = BeThemeSmartSearch_Support_Options::get_default_options();
+                $layout_page_id = !empty($options['results_layout_page_id'])
+                    ? absint($options['results_layout_page_id'])
+                    : $defaults['results_layout_page_id'];
 
                 if ($layout_page_id && class_exists('Mfn_Builder_Front')) {
                     $layout_post = get_post($layout_page_id);
@@ -35,7 +38,7 @@ get_header(); ?>
                             <div class="mcb-column-inner">
                                 <div class="betheme-smart-search-header">
                                     <?php $search_term = BeThemeSmartSearch_Helpers::get_search_term(); ?>
-                                    <h1><?php echo 'Результаты поиска: <span>' . esc_html($search_term) . '</span>'; ?></h1>
+                                    <h1><?php echo esc_html__('Результаты поиска:', 'betheme-smart-search') . ' <span>' . esc_html($search_term) . '</span>'; ?></h1>
                                 </div>
 
                                 <?php

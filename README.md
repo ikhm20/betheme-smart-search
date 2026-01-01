@@ -4,20 +4,20 @@ A WordPress plugin that enhances BeTheme's search functionality with WooCommerce
 
 ## Features
 
-### ✅ Core Functionality
+### Core Functionality
 - **Enhanced Search Relevance**: Searches by product title, SKU, content, and custom fields
 - **Context-Aware Search**: Different search behavior for shop vs blog contexts
 - **Custom Search Results Page**: Clean, e-commerce focused results template
 - **Live AJAX Search**: Real-time search suggestions with debouncing
 - **Marketplace-Style Search**: Returns products, categories, brands, and suggestions in one response
 
-### ✅ Advanced Features
+### Advanced Features
 - **ACF Integration**: Automatically searches Advanced Custom Fields text content
 - **Caching**: Transient-based caching for improved performance
 - **Analytics**: Tracks search queries, results count, and user context
 - **Mobile Responsive**: Optimized for all device sizes
 
-### ✅ WooCommerce Optimized
+### WooCommerce Optimized
 - Product-only search in shop context
 - SKU search support
 - Product attributes search
@@ -37,7 +37,7 @@ If you have Timeweb SSH access, you can deploy without creating ZIP archives.
 
 ### Auto-update via Timeweb Cron (recommended)
 
-GitHub Actions → SSH can be unstable on shared hosting (often blocked/throttled from GitHub runner IPs). The most reliable approach is to let **the server pull updates itself** on a schedule via Timeweb Cron panel:
+GitHub Actions -> SSH can be unstable on shared hosting (often blocked/throttled from GitHub runner IPs). The most reliable approach is to let **the server pull updates itself** on a schedule via Timeweb Cron panel:
 
 https://hosting.timeweb.ru/crontab/create
 
@@ -107,7 +107,7 @@ Use the shortcode below to control where the results appear:
 ```
 
 ### Brand Taxonomy
-If you use a custom brand taxonomy, update the `search_brands()` method in `includes/SearchRest.php`:
+If you use a custom brand taxonomy, update the `search_brands()` method in `includes/Search/QueryBuilder.php`:
 
 ```php
 $args = array(
@@ -126,6 +126,16 @@ View search analytics in the database table `wp_betheme_search_analytics`.
 ### Live Search
 ```
 GET /wp-json/betheme-smart-search/v1/query?q={search_term}&context={shop|blog}&limit={number}
+```
+
+### Live Dropdown (fast)
+```
+GET /wp-json/betheme-smart-search/v1/live?q={search_term}&context={shop|blog}&limit={number}&stage={exact|full}
+```
+
+### Suggestions (history/prefix)
+```
+GET /wp-json/betheme-smart-search/v1/suggest?q={search_term}&context={shop|blog}&limit={number}
 ```
 
 Response format:
@@ -152,18 +162,45 @@ Response format:
 
 ```
 betheme-smart-search/
-├── betheme-smart-search.php    # Main plugin file
-├── includes/
-│   ├── Helpers.php            # Utility functions
-│   ├── SearchQuery.php        # Search query modifications
-│   ├── SearchRest.php         # REST API endpoints
-│   └── SearchHooks.php        # WordPress hooks and filters
-├── templates/
-│   └── search-results.php     # Custom search results template
-├── assets/
-│   ├── search.js              # AJAX search functionality
-│   └── search.css             # Search styling
-└── README.md                  # This file
+|-- betheme-smart-search.php    # Main plugin file
+|-- includes/
+|   |-- Plugin.php              # Core plugin bootstrap class
+|   |-- Helpers.php             # Utility functions
+|   |-- SearchQuery.php         # Legacy wrapper for Search/Query.php
+|   |-- SearchHooks.php         # Legacy wrapper for Search/Hooks.php
+|   |-- SearchRest.php          # Legacy REST wrapper
+|   |-- Admin.php               # Legacy wrapper for Admin/Admin.php
+|   |-- AdminRest.php           # Legacy wrapper for Admin/Rest.php
+|   |-- Shortcodes.php          # Legacy wrapper for Frontend/Shortcodes.php
+|   |-- Updater.php             # Legacy wrapper for Support/Updater.php
+|   |-- Rest/
+|   |   |-- Query.php           # REST /query endpoint
+|   |   |-- LiveSearch.php      # REST /live endpoint
+|   |   |-- Suggest.php         # REST /suggest endpoint
+|   |-- Search/
+|   |   |-- Query.php           # Search query modifications
+|   |   |-- Normalize.php       # Normalization helpers
+|   |   |-- QueryBuilder.php    # Search query builder
+|   |   |-- Scoring.php         # Result scoring
+|   |   |-- History.php         # Search history analytics
+|   |   |-- Hooks.php           # WordPress hooks and filters
+|   |   |-- Service.php         # Search service (/query)
+|   |-- Admin/
+|   |   |-- Admin.php           # Admin controller
+|   |   |-- Rest.php            # Admin REST endpoints
+|   |-- Frontend/
+|   |   |-- Shortcodes.php      # Shortcode renderer
+|   |-- Support/
+|       |-- Cache.php           # Cache helpers
+|       |-- Autoload.php        # Class autoloader
+|       |-- Options.php         # Options defaults and validation
+|       |-- Updater.php         # GitHub updater
+|-- templates/
+|   |-- search-results.php      # Custom search results template
+|-- assets/
+|   |-- search.js               # AJAX search functionality
+|   |-- search.css              # Search styling
+|-- README.md                   # This file
 ```
 
 ## Hooks and Filters

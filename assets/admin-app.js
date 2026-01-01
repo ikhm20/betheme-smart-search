@@ -13,7 +13,14 @@
   var useState = wp.element.useState;
 
   var apiFetch = wp.apiFetch;
-  apiFetch.use(apiFetch.createNonceMiddleware(bethemeSmartSearchAdmin.rest_nonce));
+
+  function localFetch(args) {
+    args = args || {};
+    var headers = args.headers ? Object.assign({}, args.headers) : {};
+    headers["X-WP-Nonce"] = bethemeSmartSearchAdmin.rest_nonce;
+    args.headers = headers;
+    return apiFetch(args);
+  }
 
   var components = wp.components;
   var Button = components.Button;
@@ -53,9 +60,19 @@
 
   function safeJson(value) {
     try {
-      return JSON.stringify(value || {});
+      var seen = typeof WeakSet === "function" ? new WeakSet() : null;
+      return JSON.stringify(value || {}, function (key, val) {
+        if (!seen || !val || typeof val !== "object") return val;
+        if (seen.has(val)) return "[Circular]";
+        seen.add(val);
+        return val;
+      });
     } catch (e) {
-      return "{}";
+      try {
+        return JSON.stringify({ error: String((e && e.message) || e || "stringify_failed") });
+      } catch (err) {
+        return "{}";
+      }
     }
   }
 
@@ -99,7 +116,7 @@
     });
   }
 
-  function useHashLocation() {
+  function useHashLocation(shouldBlock) {
     var initial = typeof window.location.hash === "string" ? window.location.hash : "";
     var initialPath = initial.replace(/^#/, "") || "/dashboard";
 
@@ -107,17 +124,41 @@
       path = _useState[0],
       setPath = _useState[1];
 
+    var pathRef = useRef(initialPath);
+
     useEffect(function () {
+      pathRef.current = path;
+    }, [path]);
+
+    useEffect(function () {
+      function normalizeHash() {
+        var raw = typeof window.location.hash === "string" ? window.location.hash.replace(/^#/, "") : "";
+        var next = raw || "/dashboard";
+        if (next.charAt(0) !== "/") next = "/" + next;
+        return next;
+      }
+
       function onChange() {
-        var next = typeof window.location.hash === "string" ? window.location.hash.replace(/^#/, "") : "";
-        setPath(next || "/dashboard");
+        var next = normalizeHash();
+        var current = pathRef.current || "/dashboard";
+        if (next === current) return;
+
+        if (typeof shouldBlock === "function" && shouldBlock(next, current)) {
+          if (window.location.hash.replace(/^#/, "") !== current) {
+            window.location.hash = current;
+          }
+          return;
+        }
+
+        pathRef.current = next;
+        setPath(next);
       }
 
       window.addEventListener("hashchange", onChange);
       return function () {
         window.removeEventListener("hashchange", onChange);
       };
-    }, []);
+    }, [shouldBlock]);
 
     function navigate(nextPath) {
       if (!nextPath) return;
@@ -269,12 +310,121 @@
     );
   }
 
+  function normalizeEngineId(value) {
+    var id = String(value || "").trim();
+    if (!id) return "";
+    id = id.replace(/\s+/g, "-").toLowerCase();
+    id = id.replace(/[^a-z0-9_-]/g, "");
+    return id;
+  }
+
+  function ensureArray(value, fallback) {
+    return Array.isArray(value) ? value : fallback;
+  }
+
+  function buildDefaultEngineFromOptions(options) {
+    return {
+      id: "default",
+      label: "Default",
+      search_fields: ensureArray(options.search_fields, ["title", "sku", "content"]),
+      field_weights: options.field_weights || { title: 5, sku: 10, content: 1 },
+      product_meta_keys: ensureArray(options.product_meta_keys, []),
+      search_mode: options.search_mode || "auto",
+      min_token_length: clampInt(options.min_token_length, 1, 6, 2),
+      stopwords: options.stopwords || "",
+    };
+  }
+
+  function normalizeEngineRecord(engine, fallback) {
+    var e = engine || {};
+    return {
+      id: e.id || fallback.id,
+      label: String(e.label || fallback.label || "Engine"),
+      search_fields: ensureArray(e.search_fields, fallback.search_fields || []),
+      field_weights: e.field_weights || fallback.field_weights || {},
+      product_meta_keys: ensureArray(e.product_meta_keys, fallback.product_meta_keys || []),
+      search_mode: e.search_mode || fallback.search_mode || "auto",
+      min_token_length: clampInt(e.min_token_length, 1, 6, fallback.min_token_length || 2),
+      stopwords: String(e.stopwords || fallback.stopwords || ""),
+    };
+  }
+
+  function normalizeEnginesForUI(options) {
+    var base = buildDefaultEngineFromOptions(options || {});
+    var engines = options && options.engines && typeof options.engines === "object" ? options.engines : {};
+    var out = {};
+    Object.keys(engines || {}).forEach(function (id) {
+      var safeId = normalizeEngineId(id);
+      if (!safeId) return;
+      var record = normalizeEngineRecord(engines[id], base);
+      record.id = safeId;
+      out[safeId] = record;
+    });
+
+    if (!out.default) {
+      out.default = base;
+    }
+    return out;
+  }
+
+  function engineIdList(enginesMap) {
+    return Object.keys(enginesMap || {}).sort(function (a, b) {
+      if (a === "default") return -1;
+      if (b === "default") return 1;
+      return a.localeCompare(b);
+    });
+  }
+
   function DashboardPage(props) {
     var analytics = props.analytics;
     var analyticsLoading = props.analyticsLoading;
     var onRefresh = props.onRefresh;
+    var status = props.status;
+    var statusLoading = props.statusLoading;
+    var onStatusRefresh = props.onStatusRefresh;
+    var navigate = props.navigate;
     var days = props.days;
     var setDays = props.setDays;
+
+    function row(label, value) {
+      return { label: label, value: value == null ? "" : String(value) };
+    }
+
+    var statusRows = useMemo(function () {
+      if (!status) return [];
+      var plugin = status.plugin || {};
+      var features = plugin.features || {};
+      var caching = plugin.caching || {};
+      var live = plugin.live_search || {};
+      var wooActive = status.woo && status.woo.active ? "Активен" : "Не активен";
+      var cacheLabel = caching.enabled ? "Включено (" + String(caching.ttl || 0) + " сек.)" : "Выключено";
+      var liveLabel = live.enabled ? "Включен (" + String(live.max_results || 0) + " результатов)" : "Выключен";
+      var synonymsLabel = features.enable_synonyms ? "Включены" : "Выключены";
+
+      return [
+        row("WooCommerce", wooActive),
+        row("Товаров", status.catalog && status.catalog.products),
+        row("Live Search", liveLabel),
+        row("Кеширование", cacheLabel),
+        row("Синонимы", synonymsLabel),
+        row("Версия плагина", plugin.version),
+      ];
+    }, [status]);
+
+    var statusChips = useMemo(function () {
+      if (!status || !status.plugin) return [];
+      var chips = [];
+      if (status.plugin.live_search && status.plugin.live_search.enabled) chips.push("Live Search");
+      if (status.plugin.caching && status.plugin.caching.enabled) chips.push("Кеш");
+      if (status.plugin.logging && status.plugin.logging.enabled) chips.push("Логи");
+      if (status.plugin.features && status.plugin.features.shop_style_results) chips.push("Shop-style");
+      return chips;
+    }, [status]);
+
+    function refreshAll() {
+      if (typeof onRefresh === "function") onRefresh();
+      if (typeof onStatusRefresh === "function") onStatusRefresh();
+    }
 
     return el(
       Fragment,
@@ -299,7 +449,7 @@
               setDays(clampInt(v, 1, 365, 30));
             },
           }),
-          el(Button, { variant: "secondary", onClick: onRefresh, isBusy: analyticsLoading }, "Обновить")
+          el(Button, { variant: "secondary", onClick: refreshAll, isBusy: analyticsLoading || statusLoading }, "Обновить")
         )
       ),
       analyticsLoading && el(Spinner, null),
@@ -314,6 +464,43 @@
             label: "Среднее результатов",
             value: String(Math.round((Number(analytics.summary.avg_results) || 0) * 10) / 10),
           })
+        ),
+      statusLoading && !status && el(Spinner, null),
+      status &&
+        el(
+          Card,
+          null,
+          el(
+            CardBody,
+            null,
+            el(
+              Flex,
+              { justify: "space-between", align: "center", style: { marginBottom: "8px" } },
+              el("h3", { className: "bss-card-title" }, "Состояние системы"),
+              el(
+                Flex,
+                { gap: 8, align: "center" },
+                el(Button, { variant: "tertiary", onClick: function () { return navigate("/tools/status"); } }, "Детали"),
+                el(Button, { variant: "tertiary", onClick: function () { return navigate("/settings/general"); } }, "Настройки")
+              )
+            ),
+            el(Table, {
+              rows: statusRows,
+              columns: [
+                { key: "label", label: "Параметр" },
+                { key: "value", label: "Значение" },
+              ],
+              emptyText: "Нет данных.",
+            }),
+            statusChips.length > 0 &&
+              el(
+                "div",
+                { className: "bss-chips" },
+                statusChips.map(function (chip) {
+                  return el("span", { key: chip, className: "bss-chip" }, chip);
+                })
+              )
+          )
         ),
       analytics &&
         el(
@@ -380,7 +567,9 @@
         tabs: [
           { to: "/settings/general", label: "Общее" },
           { to: "/settings/live-search", label: "Живой поиск" },
+          { to: "/settings/quality", label: "Качество" },
           { to: "/settings/dictionaries", label: "Словари" },
+          { to: "/settings/engines", label: "Engines" },
         ],
       }),
       el(
@@ -467,7 +656,9 @@
         tabs: [
           { to: "/settings/general", label: "Общее" },
           { to: "/settings/live-search", label: "Живой поиск" },
+          { to: "/settings/quality", label: "Качество" },
           { to: "/settings/dictionaries", label: "Словари" },
+          { to: "/settings/engines", label: "Engines" },
         ],
       }),
       el(
@@ -576,6 +767,114 @@
     );
   }
 
+  function SettingsQualityPage(props) {
+    var options = props.options;
+    var updateOption = props.updateOption;
+    var navigate = props.navigate;
+
+    return el(
+      Fragment,
+      null,
+      el(SectionTitle, null, "Настройки"),
+      el(Tabs, {
+        active: "/settings/quality",
+        navigate: navigate,
+        tabs: [
+          { to: "/settings/general", label: "Общее" },
+          { to: "/settings/live-search", label: "Живой поиск" },
+          { to: "/settings/quality", label: "Качество" },
+          { to: "/settings/dictionaries", label: "Словари" },
+          { to: "/settings/engines", label: "Engines" },
+        ],
+      }),
+      el(
+        Card,
+        null,
+        el(
+          CardBody,
+          null,
+          el(PanelBody, { title: "Качество поиска", initialOpen: true },
+            el(SelectControl, {
+              label: "Режим совпадений для многословных запросов",
+              help: "Auto пытается сначала строгий режим, затем мягкий. AND — все слова обязательны. OR — достаточно части.",
+              value: options.search_mode || "auto",
+              options: [
+                { value: "auto", label: "auto" },
+                { value: "and", label: "and" },
+                { value: "or", label: "or" },
+              ],
+              onChange: function (v) {
+                updateOption("search_mode", v);
+              },
+            }),
+            el(TextControl, {
+              label: "Минимальная длина токена",
+              type: "number",
+              help: "Слишком короткие слова дают шум. Для SKU и коротких брендов оставьте 2.",
+              value: options.min_token_length,
+              onChange: function (v) {
+                updateOption("min_token_length", clampInt(v, 1, 6, 2));
+              },
+            }),
+            el(TextareaControl, {
+              label: "Стоп-слова",
+              help: "Одно слово на строку или через запятую. Эти слова будут игнорироваться в запросах.",
+              value: options.stopwords || "",
+              onChange: function (v) {
+                updateOption("stopwords", v);
+              },
+            })
+          ),
+          el(PanelBody, { title: "Ранжирование", initialOpen: false },
+            el(TextControl, {
+              label: "Буст фразы (полное совпадение)",
+              type: "number",
+              value: options.phrase_boost,
+              onChange: function (v) {
+                updateOption("phrase_boost", clampInt(v, 0, 200, 30));
+              },
+            }),
+            el(TextControl, {
+              label: "Буст точного SKU",
+              type: "number",
+              value: options.exact_sku_boost,
+              onChange: function (v) {
+                updateOption("exact_sku_boost", clampInt(v, 0, 300, 120));
+              },
+            }),
+            el(TextControl, {
+              label: "Штраф за отсутствие на складе",
+              type: "number",
+              value: options.out_of_stock_penalty,
+              onChange: function (v) {
+                updateOption("out_of_stock_penalty", clampInt(v, 0, 50, 15));
+              },
+            })
+          ),
+          el(PanelBody, { title: "Fuzzy-резерв", initialOpen: false },
+            el(ToggleControl, {
+              label: "Включить fuzzy-резерв (опечатки)",
+              help: "Если результатов нет — пробуем мягкий режим (дороже по CPU).",
+              checked: !!options.enable_fuzzy_fallback,
+              onChange: function (v) {
+                updateOption("enable_fuzzy_fallback", v ? 1 : 0);
+              },
+            }),
+            el(TextControl, {
+              label: "Макс. расстояние (Levenshtein)",
+              type: "number",
+              value: options.fuzzy_max_distance,
+              disabled: !options.enable_fuzzy_fallback,
+              onChange: function (v) {
+                updateOption("fuzzy_max_distance", clampInt(v, 1, 4, 2));
+              },
+            })
+          )
+        )
+      )
+    );
+  }
+
   function SettingsDictionariesPage(props) {
     var options = props.options;
     var updateOption = props.updateOption;
@@ -591,7 +890,9 @@
         tabs: [
           { to: "/settings/general", label: "Общее" },
           { to: "/settings/live-search", label: "Живой поиск" },
+          { to: "/settings/quality", label: "Качество" },
           { to: "/settings/dictionaries", label: "Словари" },
+          { to: "/settings/engines", label: "Engines" },
         ],
       }),
       el(
@@ -624,6 +925,274 @@
               updateOption("synonyms_rules", v);
             },
           })
+        )
+      )
+    );
+  }
+
+  function SettingsEnginesPage(props) {
+    var options = props.options;
+    var updateOption = props.updateOption;
+    var navigate = props.navigate;
+
+    var enginesMap = normalizeEnginesForUI(options);
+    var engineIds = engineIdList(enginesMap);
+    var activeEngineId = normalizeEngineId(options.active_engine || "default");
+    if (!activeEngineId || !enginesMap[activeEngineId]) {
+      activeEngineId = "default";
+    }
+
+    var _useStateEngine = useState(activeEngineId),
+      selectedEngineId = _useStateEngine[0],
+      setSelectedEngineId = _useStateEngine[1];
+
+    useEffect(
+      function () {
+        if (!enginesMap[selectedEngineId]) {
+          setSelectedEngineId(activeEngineId);
+        }
+      },
+      [engineIds.join("|"), activeEngineId]
+    );
+
+    var selectedEngine = enginesMap[selectedEngineId] || enginesMap.default;
+    var defaultEngine = enginesMap.default || buildDefaultEngineFromOptions(options || {});
+
+    var fieldList = ["title", "sku", "content"];
+    var fieldLabels = { title: "Title", sku: "SKU", content: "Content" };
+
+    function engineLabel(id) {
+      var record = enginesMap[id];
+      if (!record) return id;
+      return record.label || id;
+    }
+
+    function parseMetaKeys(value) {
+      return String(value || "")
+        .split(",")
+        .map(function (v) {
+          return v.trim();
+        })
+        .filter(Boolean);
+    }
+
+    function updateEngineField(field, value) {
+      var nextEngines = Object.assign({}, enginesMap);
+      var current = Object.assign({}, nextEngines[selectedEngineId] || {});
+      current[field] = value;
+      nextEngines[selectedEngineId] = current;
+      updateOption("engines", nextEngines);
+    }
+
+    function setActiveEngine(nextId) {
+      var safeId = normalizeEngineId(nextId) || "default";
+      if (!enginesMap[safeId]) {
+        safeId = "default";
+      }
+      updateOption("active_engine", safeId);
+    }
+
+    function addEngine() {
+      var base = buildDefaultEngineFromOptions(options || {});
+      var baseLabel = "Engine";
+      var idBase = "engine";
+      var nextId = idBase;
+      var idx = 1;
+      while (enginesMap[nextId]) {
+        idx += 1;
+        nextId = idBase + "-" + idx;
+      }
+      var record = normalizeEngineRecord({}, base);
+      record.id = nextId;
+      record.label = baseLabel + " " + idx;
+      var nextEngines = Object.assign({}, enginesMap);
+      nextEngines[nextId] = record;
+      updateOption("engines", nextEngines);
+      setSelectedEngineId(nextId);
+    }
+
+    function removeEngine() {
+      if (selectedEngineId === "default") return;
+      var label = engineLabel(selectedEngineId);
+      if (!window.confirm('Remove engine "' + label + '"?')) return;
+      var nextEngines = Object.assign({}, enginesMap);
+      delete nextEngines[selectedEngineId];
+      updateOption("engines", nextEngines);
+      if (selectedEngineId === activeEngineId) {
+        updateOption("active_engine", "default");
+      }
+      setSelectedEngineId("default");
+    }
+
+    var activeOptions = engineIds.map(function (id) {
+      return { value: id, label: engineLabel(id) };
+    });
+
+    var editOptions = engineIds.map(function (id) {
+      return { value: id, label: engineLabel(id) };
+    });
+
+    var metaKeysValue = Array.isArray(selectedEngine.product_meta_keys)
+      ? selectedEngine.product_meta_keys.join(", ")
+      : selectedEngine.product_meta_keys || "";
+
+    return el(
+      Fragment,
+      null,
+      el(SectionTitle, null, "Engines"),
+      el(Tabs, {
+        active: "/settings/engines",
+        navigate: navigate,
+        tabs: [
+          { to: "/settings/general", label: "Settings" },
+          { to: "/settings/live-search", label: "Live Search" },
+          { to: "/settings/quality", label: "Quality" },
+          { to: "/settings/dictionaries", label: "Dictionaries" },
+          { to: "/settings/engines", label: "Engines" },
+        ],
+      }),
+      el(
+        Card,
+        null,
+        el(
+          CardBody,
+          null,
+          el(PanelBody, { title: "Engine selection", initialOpen: true },
+            el(SelectControl, {
+              label: "Active engine",
+              value: activeEngineId,
+              options: activeOptions,
+              onChange: setActiveEngine,
+            }),
+            el(SelectControl, {
+              label: "Edit engine",
+              value: selectedEngineId,
+              options: editOptions,
+              onChange: function (v) {
+                setSelectedEngineId(normalizeEngineId(v) || "default");
+              },
+            }),
+            el(
+              Flex,
+              { gap: 8 },
+              el(Button, { isSecondary: true, onClick: addEngine }, "Add engine"),
+              el(
+                Button,
+                {
+                  isDestructive: true,
+                  disabled: selectedEngineId === "default",
+                  onClick: removeEngine,
+                },
+                "Remove engine"
+              )
+            ),
+            el(
+              HelpText,
+              null,
+              "Engine settings override General/Quality values for live search and REST endpoints."
+            )
+          ),
+          el(PanelBody, { title: "Engine settings", initialOpen: false },
+            el(TextControl, {
+              label: "Label",
+              value: selectedEngine.label || "",
+              onChange: function (v) {
+                updateEngineField("label", v);
+              },
+            }),
+            el(
+              "div",
+              { className: "bss-form-row" },
+              el("div", { className: "bss-form-label" }, "Search fields"),
+              el(
+                "div",
+                { className: "bss-form-control" },
+                fieldList.map(function (field) {
+                  var list = Array.isArray(selectedEngine.search_fields)
+                    ? selectedEngine.search_fields
+                    : defaultEngine.search_fields || [];
+                  var checked = list.indexOf(field) !== -1;
+                  return el(CheckboxControl, {
+                    key: field,
+                    label: fieldLabels[field] || field,
+                    checked: checked,
+                    onChange: function (v) {
+                      var next = list.slice(0);
+                      if (v) {
+                        if (next.indexOf(field) === -1) next.push(field);
+                      } else {
+                        next = next.filter(function (f) {
+                          return f !== field;
+                        });
+                      }
+                      updateEngineField("search_fields", next);
+                    },
+                  });
+                })
+              )
+            ),
+            el(
+              "div",
+              { className: "bss-form-row" },
+              el("div", { className: "bss-form-label" }, "Field weights"),
+              el(
+                "div",
+                { className: "bss-form-control" },
+                fieldList.map(function (field) {
+                  var currentWeights = selectedEngine.field_weights || {};
+                  var val = currentWeights[field];
+                  if (val == null) val = (defaultEngine.field_weights || {})[field] || 0;
+                  return el(TextControl, {
+                    key: field,
+                    label: (fieldLabels[field] || field) + " weight",
+                    type: "number",
+                    value: val,
+                    onChange: function (v) {
+                      var nextWeights = Object.assign({}, currentWeights);
+                      nextWeights[field] = clampInt(v, 0, 50, 0);
+                      updateEngineField("field_weights", nextWeights);
+                    },
+                  });
+                })
+              )
+            ),
+            el(SelectControl, {
+              label: "Search mode",
+              value: selectedEngine.search_mode || "auto",
+              options: [
+                { value: "auto", label: "auto" },
+                { value: "and", label: "and" },
+                { value: "or", label: "or" },
+              ],
+              onChange: function (v) {
+                updateEngineField("search_mode", v);
+              },
+            }),
+            el(TextControl, {
+              label: "Min token length",
+              type: "number",
+              value: selectedEngine.min_token_length,
+              onChange: function (v) {
+                updateEngineField("min_token_length", clampInt(v, 1, 6, 2));
+              },
+            }),
+            el(TextControl, {
+              label: "Meta keys (SKU/barcode)",
+              help: "Comma-separated list. Example: _sku, _ean, barcode",
+              value: metaKeysValue,
+              onChange: function (v) {
+                updateEngineField("product_meta_keys", parseMetaKeys(v));
+              },
+            }),
+            el(TextareaControl, {
+              label: "Stopwords",
+              help: "One per line.",
+              value: selectedEngine.stopwords || "",
+              onChange: function (v) {
+                updateEngineField("stopwords", v);
+              },
+            })
+          )
         )
       )
     );
@@ -1654,6 +2223,14 @@
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [router.path]);
 
+    useEffect(function () {
+      if (!startsWith(router.path, "/dashboard")) return;
+      if (statusLoading) return;
+      if (status) return;
+      loadStatus();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router.path]);
+
     function save() {
       if (!options) return;
       setIsSaving(true);
@@ -1756,6 +2333,10 @@
           onRefresh: loadAnalytics,
           days: analyticsDays,
           setDays: setAnalyticsDays,
+          status: status,
+          statusLoading: statusLoading,
+          onStatusRefresh: loadStatus,
+          navigate: guardedNavigate,
         });
       }
 
@@ -1767,8 +2348,16 @@
         return el(SettingsLiveSearchPage, { options: options, updateOption: updateOption, navigate: guardedNavigate });
       }
 
+      if (startsWith(router.path, "/settings/quality")) {
+        return el(SettingsQualityPage, { options: options, updateOption: updateOption, navigate: guardedNavigate });
+      }
+
       if (startsWith(router.path, "/settings/dictionaries")) {
         return el(SettingsDictionariesPage, { options: options, updateOption: updateOption, navigate: guardedNavigate });
+      }
+
+      if (startsWith(router.path, "/settings/engines")) {
+        return el(SettingsEnginesPage, { options: options, updateOption: updateOption, navigate: guardedNavigate });
       }
 
       if (startsWith(router.path, "/analytics")) {
@@ -1817,6 +2406,10 @@
         onRefresh: loadAnalytics,
         days: analyticsDays,
         setDays: setAnalyticsDays,
+        status: status,
+        statusLoading: statusLoading,
+        onStatusRefresh: loadStatus,
+        navigate: guardedNavigate,
       });
     }
 

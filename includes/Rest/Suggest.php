@@ -1,0 +1,117 @@
+<?php
+/**
+ * REST: Suggestions endpoint (skeleton).
+ *
+ * This file is intentionally minimal for the refactor step-by-step.
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class BeThemeSmartSearch_Rest_Suggest {
+    private $options;
+    private $query_builder;
+    private $history;
+
+    public function __construct($register_endpoints = true) {
+        $this->options = BeThemeSmartSearch_Support_Options::get();
+        $this->query_builder = class_exists('BeThemeSmartSearch_Search_QueryBuilder')
+            ? new BeThemeSmartSearch_Search_QueryBuilder()
+            : null;
+        $this->history = class_exists('BeThemeSmartSearch_Search_History')
+            ? new BeThemeSmartSearch_Search_History()
+            : null;
+        if ($register_endpoints) {
+            add_action('rest_api_init', array($this, 'register_endpoints'));
+        }
+    }
+
+    public function register_endpoints() {
+        register_rest_route('betheme-smart-search/v1', '/suggest', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'handle_suggest_query'),
+            'permission_callback' => '__return_true',
+            'args' => array(
+                'q' => array(
+                    'default' => '',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'context' => array(
+                    'default' => 'shop',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ),
+                'limit' => array(
+                    'default' => 8,
+                    'sanitize_callback' => 'absint',
+                ),
+                'days' => array(
+                    'default' => 30,
+                    'sanitize_callback' => 'absint',
+                ),
+            ),
+        ));
+    }
+
+    public function handle_suggest_query($request) {
+        $q = (string) $request->get_param('q');
+        $q = trim($q);
+        $context = (string) $request->get_param('context');
+        $context = $context !== '' ? $context : 'shop';
+
+        $limit = (int) $request->get_param('limit');
+        $limit = max(1, min(20, $limit));
+
+        $days = (int) $request->get_param('days');
+        $days = max(1, min(365, $days));
+
+        $use_cache = !empty($this->options['enable_caching']);
+        $cache_ttl = 300;
+        if (!empty($this->options['cache_ttl'])) {
+            $cache_ttl = (int) $this->options['cache_ttl'];
+        }
+        $cache_ttl = BeThemeSmartSearch_Support_Cache::clamp_ttl($cache_ttl, 60, 3600);
+
+        $cache_key = 'betheme_search_suggest_' . md5($q . '|' . $context . '|' . $limit . '|' . $days . '|v2');
+        if ($use_cache) {
+            $cached = BeThemeSmartSearch_Support_Cache::get($cache_key);
+            if ($cached !== false) {
+                return rest_ensure_response($cached);
+            }
+        }
+
+        $popular = array();
+        $matches = array();
+        $popular_products = array();
+
+        if ($this->history) {
+            if ($q !== '' && BeThemeSmartSearch_Search_Normalize::length($q) >= 2) {
+                $matches = $this->history->get_prefix_matches($q, $context, $days, min(30, $limit * 4));
+            } else {
+                $popular = $this->history->get_popular_queries($context, $days, min(50, $limit * 6));
+            }
+        }
+
+        // Popular products (only needed for empty query UI).
+        if ($q === '' && $context === 'shop' && BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
+            if ($this->query_builder) {
+                $popular_products = $this->query_builder->get_popular_products($limit, $this->options);
+            }
+        }
+
+        $payload = array(
+            'query' => $q,
+            'context' => $context,
+            // Popular queries: returned as a fallback, but the UI may prefer popular_products.
+            'popular' => array_slice($popular, 0, $limit),
+            'matches' => array_slice($matches, 0, $limit),
+            'popular_products' => array_slice($popular_products, 0, $limit),
+        );
+
+        if ($use_cache && $cache_ttl > 0) {
+            BeThemeSmartSearch_Support_Cache::set($cache_key, $payload, $cache_ttl);
+        }
+
+        return rest_ensure_response($payload);
+    }
+}

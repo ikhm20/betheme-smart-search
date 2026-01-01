@@ -75,6 +75,22 @@
   color: #111827;
 }
 
+.betheme-smart-search-admin .bss-app .bss-form-row {
+  margin-top: 12px;
+}
+
+.betheme-smart-search-admin .bss-app .bss-form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.betheme-smart-search-admin .bss-app .bss-form-control {
+  display: grid;
+  gap: 8px;
+}
+
 /* SPA shell */
 .betheme-smart-search-admin .bss-app.bss-shell {
   --bss-bg: #f6f7fb;

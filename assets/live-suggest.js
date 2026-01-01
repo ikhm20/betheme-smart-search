@@ -21,6 +21,19 @@
     };
   }
 
+  var FALLBACK_STRINGS = {
+    heading_suggestions: "\u041f\u043e\u0445\u043e\u0436\u0438\u0435 \u0437\u0430\u043f\u0440\u043e\u0441\u044b",
+    heading_history: "\u0418\u0441\u0442\u043e\u0440\u0438\u044f \u043f\u043e\u0438\u0441\u043a\u0430",
+    heading_popular_products: "\u041f\u043e\u043f\u0443\u043b\u044f\u0440\u043d\u044b\u0435 \u0442\u043e\u0432\u0430\u0440\u044b",
+    heading_products: "\u0422\u043e\u0432\u0430\u0440\u044b \u043f\u043e \u0430\u0440\u0442\u0438\u043a\u0443\u043b\u0443",
+    heading_products_generic: "\u0422\u043e\u0432\u0430\u0440\u044b",
+    heading_exact: "\u0422\u043e\u0447\u043d\u043e\u0435 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435",
+    label_loading: "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430",
+    label_clear_history: "\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0438\u0441\u0442\u043e\u0440\u0438\u044e",
+    label_remove_history: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0437\u0430\u043f\u0440\u043e\u0441",
+    heading: "\u041f\u043e\u0445\u043e\u0436\u0438\u0435 \u0437\u0430\u043f\u0440\u043e\u0441\u044b",
+  };
+
   function getDebounceMs(cfg) {
     var isCoarse = false;
     try {
@@ -52,63 +65,61 @@
     }
   }
 
-  function getHistory(cfg) {
-    try {
-      var raw = window.localStorage.getItem(cfg.storageKey);
-      var list = safeJsonParse(raw || "[]", []);
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
-  }
+  var HistoryStore = {
+    get: function (cfg) {
+      try {
+        var raw = window.localStorage.getItem(cfg.storageKey);
+        var list = safeJsonParse(raw || "[]", []);
+        return Array.isArray(list) ? list : [];
+      } catch (e) {
+        return [];
+      }
+    },
+    save: function (cfg, list) {
+      try {
+        window.localStorage.setItem(cfg.storageKey, JSON.stringify(list));
+      } catch (e) {
+        // ignore
+      }
+    },
+    removeItem: function (cfg, query) {
+      var q = String(query || "").trim();
+      if (!q) return;
+      var list = HistoryStore.get(cfg)
+        .filter(function (x) {
+          return typeof x === "string" && x.trim();
+        })
+        .filter(function (x) {
+          return x.toLowerCase() !== q.toLowerCase();
+        });
+      HistoryStore.save(cfg, list);
+    },
+    clear: function (cfg) {
+      try {
+        window.localStorage.removeItem(cfg.storageKey);
+      } catch (e) {
+        // ignore
+      }
+    },
+    push: function (cfg, query) {
+      var q = String(query || "").trim();
+      if (!q) return;
+      var list = HistoryStore.get(cfg)
+        .filter(function (x) {
+          return typeof x === "string" && x.trim();
+        })
+        .map(function (x) {
+          return x.trim();
+        });
 
-  function removeHistoryItem(cfg, query) {
-    var q = String(query || "").trim();
-    if (!q) return;
-    var list = getHistory(cfg)
-      .filter(function (x) {
-        return typeof x === "string" && x.trim();
-      })
-      .filter(function (x) {
+      list = list.filter(function (x) {
         return x.toLowerCase() !== q.toLowerCase();
       });
-    try {
-      window.localStorage.setItem(cfg.storageKey, JSON.stringify(list));
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  function clearHistory(cfg) {
-    try {
-      window.localStorage.removeItem(cfg.storageKey);
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  function pushHistory(cfg, query) {
-    var q = String(query || "").trim();
-    if (!q) return;
-    var list = getHistory(cfg)
-      .filter(function (x) {
-        return typeof x === "string" && x.trim();
-      })
-      .map(function (x) {
-        return x.trim();
-      });
-
-    list = list.filter(function (x) {
-      return x.toLowerCase() !== q.toLowerCase();
-    });
-    list.unshift(q);
-    list = list.slice(0, 10);
-    try {
-      window.localStorage.setItem(cfg.storageKey, JSON.stringify(list));
-    } catch (e) {
-      // ignore
-    }
-  }
+      list.unshift(q);
+      list = list.slice(0, 10);
+      HistoryStore.save(cfg, list);
+    },
+  };
 
   function isCodeLike(query) {
     var q = String(query || "").trim();
@@ -164,9 +175,19 @@
     return out;
   }
 
+  function normalizeHeadingValue(value) {
+    var s = String(value || "");
+    if (!s) return "";
+    if (/^[\?\s]+$/.test(s)) return "";
+    return s;
+  }
+
   function headingText(cfg, key, fallback) {
     var s = cfg.strings && cfg.strings[key] ? String(cfg.strings[key]) : "";
-    return s || fallback;
+    s = normalizeHeadingValue(s);
+    if (s) return s;
+    if (fallback) return fallback;
+    return FALLBACK_STRINGS[key] || "";
   }
 
   function findLiveBox(input) {
@@ -305,7 +326,7 @@
       return;
     }
 
-    renderHeading(ul, headingText(cfg, "heading_exact", "Точное совпадение"));
+    renderHeading(ul, headingText(cfg, "heading_exact", FALLBACK_STRINGS.heading_exact));
 
     var li = document.createElement("li");
     li.setAttribute("data-category", "product");
@@ -341,7 +362,7 @@
       return;
     }
 
-    renderHeading(ul, headingText(cfg, "heading_products", "Товары по артикулу"));
+    renderHeading(ul, headingText(cfg, "heading_products", FALLBACK_STRINGS.heading_products));
 
     products.slice(0, cfg.maxProducts).forEach(function (p) {
       if (!p || !p.url) return;
@@ -386,7 +407,7 @@
     var ul = section.querySelector("ul");
     if (!ul) return;
     ul.innerHTML = "";
-    renderHeading(ul, headingText(cfg, "heading_products_generic", "Товары"));
+    renderHeading(ul, headingText(cfg, "heading_products_generic", FALLBACK_STRINGS.heading_products_generic));
     renderSkeletonList(ul, Math.min(4, cfg.maxProducts));
     section.style.display = "block";
   }
@@ -403,7 +424,7 @@
       return;
     }
 
-    renderHeading(ul, headingText(cfg, "heading_products_generic", "Товары"));
+    renderHeading(ul, headingText(cfg, "heading_products_generic", FALLBACK_STRINGS.heading_products_generic));
 
     products.slice(0, cfg.maxProducts).forEach(function (p) {
       if (!p || !p.url) return;
@@ -439,21 +460,24 @@
     var q = String(payload && payload.query ? payload.query : "").trim();
     var items = [];
 
-    var history = getHistory(cfg);
+    var history = HistoryStore.get(cfg);
 
     // When query is empty: show history (if any), otherwise show popular products.
     if (q === "") {
       ul.innerHTML = "";
 
       if (history && history.length) {
-        renderHeading(ul, headingText(cfg, "heading_history", "История поиска"));
+        renderHeading(ul, headingText(cfg, "heading_history", FALLBACK_STRINGS.heading_history));
 
         // "Clear all" control.
         var clearLi = document.createElement("li");
         clearLi.className = "bss-history-actions";
         clearLi.setAttribute("data-category", "bss-history-actions");
+        var clearLabel = headingText(cfg, "label_clear_history", FALLBACK_STRINGS.label_clear_history);
         clearLi.innerHTML =
-          '<button type="button" class="bss-history-clear" data-bss-action="clear-history">Очистить историю</button>';
+          '<button type="button" class="bss-history-clear" data-bss-action="clear-history">' +
+          escapeHtml(clearLabel) +
+          "</button>";
         ul.appendChild(clearLi);
 
         history.slice(0, cfg.maxItems).forEach(function (h) {
@@ -461,14 +485,17 @@
           li.className = "bss-history-item";
           li.setAttribute("data-category", "suggestion");
           li.setAttribute("data-bss-query", h);
+          var removeLabel = headingText(cfg, "label_remove_history", FALLBACK_STRINGS.label_remove_history);
           li.innerHTML =
             '<a class="bss-history-link" href="' +
             buildSearchUrl(input, h) +
             '">' +
             escapeHtml(h) +
-            '</a><button type="button" class="bss-history-remove" aria-label="Удалить запрос" data-bss-action="remove-history" data-bss-query="' +
+            '</a><button type="button" class="bss-history-remove" aria-label="' +
+            escapeHtml(removeLabel) +
+            '" data-bss-action="remove-history" data-bss-query="' +
             escapeHtml(h) +
-            '">×</button>';
+            '">&times;</button>';
           ul.appendChild(li);
         });
 
@@ -485,7 +512,7 @@
         return;
       }
 
-      renderHeading(ul, headingText(cfg, "heading_popular_products", "Популярные товары"));
+      renderHeading(ul, headingText(cfg, "heading_popular_products", FALLBACK_STRINGS.heading_popular_products));
       popularProducts.forEach(function (p) {
         var li = document.createElement("li");
         li.setAttribute("data-category", "product");
@@ -545,7 +572,7 @@
     }
 
     ul.innerHTML = "";
-    renderHeading(ul, headingText(cfg, "heading_suggestions", "Похожие запросы"));
+    renderHeading(ul, headingText(cfg, "heading_suggestions", FALLBACK_STRINGS.heading_suggestions));
 
     items.forEach(function (it) {
       var li = document.createElement("li");
@@ -682,11 +709,11 @@
 
     if (cfg.suggestUrl) {
       if (q === "") {
-        showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", "Подсказки", 3);
+        showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", FALLBACK_STRINGS.heading_suggestions, 3);
         fetchSuggestions(seq, input, box, q);
       } else {
         if (cfg.showSuggestions) {
-          showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", "Подсказки", 3);
+          showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", FALLBACK_STRINGS.heading_suggestions, 3);
           fetchSuggestions(seq, input, box, q);
         } else {
           hideSection(box, "mfn-live-search-list-suggestions");
@@ -705,8 +732,8 @@
     }
 
     if (cfg.showCodeProducts && cfg.liveUrl && isCodeLike(q) && q.length >= 2) {
-      showLoading(cfg, box, "mfn-live-search-list-bss-exact", "heading_exact", "Точное совпадение", 1);
-      showLoading(cfg, box, "mfn-live-search-list-bss-products", "heading_products", "Товары по артикулу", Math.min(3, cfg.maxProducts));
+      showLoading(cfg, box, "mfn-live-search-list-bss-exact", "heading_exact", FALLBACK_STRINGS.heading_exact, 1);
+      showLoading(cfg, box, "mfn-live-search-list-bss-products", "heading_products", FALLBACK_STRINGS.heading_products, Math.min(3, cfg.maxProducts));
       fetchLiveExact(seq, input, box, q);
       fetchLiveFull(seq, input, box, q);
     } else {
@@ -849,7 +876,7 @@
         e.preventDefault();
         var li = a.closest ? a.closest("li") : null;
         var q = li && li.getAttribute ? li.getAttribute("data-bss-query") : "";
-        pushHistory(cfg, q || active.input.value || a.textContent || "");
+        HistoryStore.push(cfg, q || active.input.value || a.textContent || "");
         window.location.href = a.href;
       }
     },
@@ -874,7 +901,7 @@
 
       var li = a.closest ? a.closest("li") : null;
       var q = li && li.getAttribute ? li.getAttribute("data-bss-query") : "";
-      pushHistory(cfg, q || active.input.value || a.textContent || "");
+      HistoryStore.push(cfg, q || active.input.value || a.textContent || "");
     },
     true
   );
@@ -927,7 +954,7 @@
       if (!form || form.nodeType !== 1 || form.tagName !== "FORM") return;
       var input = form.querySelector('input.field[name="s"]');
       if (!input) return;
-      pushHistory(cfg, input.value);
+      HistoryStore.push(cfg, input.value);
     },
     true
   );
@@ -948,14 +975,14 @@
       e.stopPropagation();
 
       if (action === "clear-history") {
-        clearHistory(cfg);
+        HistoryStore.clear(cfg);
         handleInputOrFocus(active.input);
         return;
       }
 
       if (action === "remove-history") {
         var q2 = t.getAttribute("data-bss-query") || "";
-        removeHistoryItem(cfg, q2);
+        HistoryStore.removeItem(cfg, q2);
         handleInputOrFocus(active.input);
       }
     },
