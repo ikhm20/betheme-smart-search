@@ -129,6 +129,9 @@ class BeThemeSmartSearch_Rest_Suggest {
             'popular' => array_slice($popular, 0, $limit),
             'matches' => array_slice($matches, 0, $limit),
             'popular_products' => array_slice($popular_products, 0, $limit),
+            'meta' => array(
+                'require_full_coverage' => !empty($this->options['live_search_require_all_tokens']) ? 1 : 0,
+            ),
         );
 
         if ($use_cache && $cache_ttl > 0) {

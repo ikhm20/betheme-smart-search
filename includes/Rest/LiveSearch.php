@@ -97,6 +97,10 @@ class BeThemeSmartSearch_Rest_LiveSearch {
             'products' => array(),
             'categories' => array(),
             'timings_ms' => array(),
+            // Diagnostic meta to indicate whether server will enforce full-token coverage
+            'meta' => array(
+                'require_full_coverage' => !empty($this->options['live_search_require_all_tokens']) ? 1 : 0,
+            ),
         );
 
         $payload['exact_product'] = $this->query_builder->find_exact_product($variants, $this->options);
