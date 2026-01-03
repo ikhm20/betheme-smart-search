@@ -132,7 +132,11 @@ class BeThemeSmartSearch_Rest_LiveSearch {
         }
 
         if ($context === 'shop' && BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
-            $payload['products'] = $this->query_builder->search_products_v2($variants[0], $limit, $this->options);
+            // Allow the live-search to request stricter coverage behavior without changing global search behavior.
+            $opts = $this->options;
+            $opts['require_full_coverage'] = !empty($this->options['live_search_require_all_tokens']) ? 1 : 0;
+
+            $payload['products'] = $this->query_builder->search_products_v2($variants[0], $limit, $opts);
             if (!empty($this->options['live_search_show_categories'])) {
                 $payload['categories'] = $this->query_builder->search_categories($variants[0], min(10, $limit));
             }

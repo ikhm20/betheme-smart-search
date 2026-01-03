@@ -218,6 +218,17 @@ class BeThemeSmartSearch_Search_QueryBuilder {
                     return isset($product['token_hits']) && (int) $product['token_hits'] === $token_total;
                 }));
             }
+
+            // If live search requests strict coverage, enforce it regardless of global search_mode.
+            if (!empty($options['require_full_coverage']) && $token_total > 1) {
+                $products = array_values(array_filter($products, function ($product) use ($token_total) {
+                    return isset($product['token_hits']) && (int) $product['token_hits'] === $token_total;
+                }));
+
+                if (empty($products)) {
+                    return array();
+                }
+            }
         }
 
         $scoring = new BeThemeSmartSearch_Search_Scoring();

@@ -184,6 +184,10 @@ class BeThemeSmartSearch_Support_Options {
 
             'fuzzy_max_distance' => 2,
 
+            // When enabled, live search will only return products that match ALL tokens from the query
+            // (useful for multi-word queries where partial matches are undesired in the live dropdown).
+            'live_search_require_all_tokens' => 0,
+
             'use_custom_template' => 1,
 
             'enable_caching' => 1,
@@ -450,6 +454,8 @@ iphon=iphone,айфон,iphone
         $sanitized['enable_fuzzy_fallback'] = !empty($input['enable_fuzzy_fallback']) ? 1 : 0;
 
         $sanitized['fuzzy_max_distance'] = isset($input['fuzzy_max_distance']) ? intval($input['fuzzy_max_distance']) : $defaults['fuzzy_max_distance'];
+
+        $sanitized['live_search_require_all_tokens'] = !empty($input['live_search_require_all_tokens']) ? 1 : 0;
 
 
 
