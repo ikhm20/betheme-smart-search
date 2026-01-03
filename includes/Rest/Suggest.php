@@ -66,6 +66,12 @@ class BeThemeSmartSearch_Rest_Suggest {
             'popular' => array(),
             'matches' => array(),
             'popular_products' => array(),
+            // Temporary debug info for early returns
+            'debug' => array(
+                'live_search_enabled' => !empty($this->options['live_search_enabled']) ? 1 : 0,
+                'live_search_show_suggestions' => !empty($this->options['live_search_show_suggestions']) ? 1 : 0,
+                'enable_caching' => !empty($this->options['enable_caching']) ? 1 : 0,
+            ),
         );
 
         if (empty($this->options['live_search_enabled'])) {
