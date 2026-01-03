@@ -31,40 +31,10 @@ A WordPress plugin that enhances BeTheme's search functionality with WooCommerce
 3. Activate the plugin through the WordPress admin
 4. The plugin will automatically override BeTheme's search functionality
 
-## Deployment (Timeweb shared hosting)
+## Deployment
 
-If you have Timeweb SSH access, you can deploy without creating ZIP archives.
+Deployment helper scripts for Timeweb were removed from this repository because they were not used by the project. If you need hosting-specific deployment scripts (for Timeweb or other providers), keep them in a separate `deploy/` directory or a private repository and document their usage here.
 
-### Auto-update via Timeweb Cron (recommended)
-
-GitHub Actions -> SSH can be unstable on shared hosting (often blocked/throttled from GitHub runner IPs). The most reliable approach is to let **the server pull updates itself** on a schedule via Timeweb Cron panel:
-
-https://hosting.timeweb.ru/crontab/create
-
-1) Create a cron task (example: every 2 minutes).
-2) Command / file to run:
-
-- If Timeweb Cron lets you run a command:  
-  `bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-cron.sh`
-- If Timeweb Cron only lets you choose a file (and runs it via PHP):  
-  `/home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-cron.php`
-
-Logs are written to:
-
-`/tmp/betheme-smart-search-cron.log`
-
-Note: `scripts/timeweb-cron.sh` and `scripts/timeweb-update.sh` auto-detect the plugin directory (relative to themselves), so they work even if your Timeweb path changes.
-
-### First install (clone + atomic swap)
-- Create a private GitHub/GitLab repo with this plugin.
-- On the server, add an SSH key (recommended) and ensure `git` works.
-- Deactivate the plugin in WP Admin (recommended).
-- Run in SSH:
-
-`bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-install.sh git@github.com:USER/REPO.git main`
-
-### Update (1 command)
-`bash /home/c/cn30947/wordpress_nb95i/public_html/wp-content/plugins/betheme-smart-search/scripts/timeweb-update.sh`
 
 ## Updates in WP Admin (GitHub Releases)
 
