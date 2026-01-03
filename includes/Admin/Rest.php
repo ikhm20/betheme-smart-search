@@ -251,7 +251,13 @@ class BeThemeSmartSearch_Admin_REST {
             $meta_keys = array_values(array_unique(array_map('strval', is_array($meta_keys) ? $meta_keys : array())));
             sort($meta_keys);
             $mode = BeThemeSmartSearch_Support_Options::normalize_code_match_mode(isset($options['code_match_mode']) ? $options['code_match_mode'] : null);
-            $meta_query = BeThemeSmartSearch_Search_MetaQuery::build_for_variants($variants, $meta_keys, $mode);
+
+            // Only apply meta_key search for code-like queries (SKU/barcode) or when explicitly enabled by option
+            $meta_query = array();
+            $apply_meta_search = BeThemeSmartSearch_Search_Normalize::is_code_like_query($q) || (!empty($options['enhance_shop_search_query']));
+            if ($apply_meta_search) {
+                $meta_query = BeThemeSmartSearch_Search_MetaQuery::build_for_variants($variants, $meta_keys, $mode);
+            }
 
             $query_args = array(
                 'post_type' => 'product',
@@ -268,6 +274,7 @@ class BeThemeSmartSearch_Admin_REST {
                 'keys' => array_slice($meta_keys, 0, 30),
             );
             $debug['meta_query'] = array(
+                'applied' => !!$apply_meta_search,
                 'clauses' => empty($meta_query) ? 0 : max(0, count($meta_query) - 1),
                 'variants' => $variants,
                 'mode' => $mode,
