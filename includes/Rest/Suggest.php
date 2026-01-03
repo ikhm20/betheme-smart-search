@@ -199,7 +199,8 @@ class BeThemeSmartSearch_Rest_Suggest {
                 'debug' => $debug_info,
             );
 
-            if ($use_cache && $cache_ttl > 0 && empty($force_refresh)) {
+            if ($use_cache && $cache_ttl > 0) {
+                // Write fresh payload to cache (allow force-refresh requests to update cached value).
                 BeThemeSmartSearch_Support_Cache::set($cache_key, $payload, $cache_ttl);
             }
 
