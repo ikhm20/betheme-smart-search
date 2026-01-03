@@ -150,6 +150,10 @@
     var updateOption = props.updateOption;
     var navigate = props.navigate;
 
+    var _useStateLiveQ = useState("") , liveTestQuery = _useStateLiveQ[0], setLiveTestQuery = _useStateLiveQ[1];
+    var _useStateLiveLoading = useState(false), liveTestLoading = _useStateLiveLoading[0], setLiveTestLoading = _useStateLiveLoading[1];
+    var _useStateLiveResult = useState(null), liveTestResult = _useStateLiveResult[0], setLiveTestResult = _useStateLiveResult[1];
+
     return el(
       Fragment,
       null,
@@ -253,7 +257,38 @@
               onChange: function (v) {
                 updateOption("live_search_require_all_tokens", v ? 1 : 0);
               },
-            })
+            }),
+            el("div", { style: { marginTop: 12 } },
+              el(TextControl, {
+                label: "Quick Test (Live search)",
+                value: liveTestQuery,
+                onChange: function (v) {
+                  setLiveTestQuery(v);
+                },
+              }),
+              el(Flex, { gap: 10, align: "flex-end" },
+                el(Button, { variant: "primary", onClick: function () {
+                  var q = (liveTestQuery || "").trim();
+                  if (!q) return;
+                  setLiveTestLoading(true);
+                  setLiveTestResult(null);
+                  api.testQuery(q, 5, { requestKey: "liveQuickTest" })
+                    .then(function (res) {
+                      setLiveTestResult(res || null);
+                    })
+                    .catch(function (err) {
+                      window.alert(err && err.message ? err.message : "Test failed");
+                    })
+                    .finally(function () {
+                      setLiveTestLoading(false);
+                    });
+                }, isBusy: liveTestLoading }, "Run Test"),
+                el(Button, { variant: "tertiary", onClick: function () { navigate("/tools/test-query"); } }, "Open full Test Query")
+              ),
+              liveTestResult && el("div", { style: { marginTop: 12 } }, el("div", null, "Products: " + (Array.isArray(liveTestResult.products) ? String(liveTestResult.products.length) : "0")), Array.isArray(liveTestResult.products) ? liveTestResult.products.slice(0, 3).map(function (p, i) {
+                return el("div", { key: i }, el("a", { href: p.url, target: "_blank", rel: "noreferrer" }, p.title || ""));
+              }) : null)
+            )
           ),
           el(PanelBody, { title: "\u041a\u0435\u0448\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 (\u0443\u0441\u043a\u043e\u0440\u0435\u043d\u0438\u0435)", initialOpen: false },
             el(ToggleControl, {
