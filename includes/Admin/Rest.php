@@ -44,6 +44,12 @@ class BeThemeSmartSearch_Admin_REST {
             'permission_callback' => array($this, 'permission_check'),
         ));
 
+        register_rest_route('betheme-smart-search/v1', '/admin/reindex', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'reindex'),
+            'permission_callback' => array($this, 'permission_check'),
+        ));
+
         register_rest_route('betheme-smart-search/v1', '/admin/analytics', array(
             'methods' => 'GET',
             'callback' => array($this, 'get_analytics'),
@@ -146,6 +152,16 @@ class BeThemeSmartSearch_Admin_REST {
         BeThemeSmartSearch_Support_Cache::clear_search_transients();
 
         return rest_ensure_response(array('ok' => true));
+    }
+
+    public function reindex() {
+        // For now, reindex will clear search transients and bump a version counter.
+        BeThemeSmartSearch_Support_Cache::clear_search_transients();
+        $v = (int) get_option('betheme_smart_search_index_version', 0);
+        $v++;
+        update_option('betheme_smart_search_index_version', $v, false);
+
+        return rest_ensure_response(array('ok' => true, 'index_version' => $v));
     }
 
     public function get_analytics(WP_REST_Request $request) {
