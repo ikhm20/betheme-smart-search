@@ -59,6 +59,8 @@ class BeThemeSmartSearch_Rest_Suggest {
         $context = $this->normalize_context($request->get_param('context'));
         $limit = $this->clamp_int($request->get_param('limit'), 1, 20);
         $days = $this->clamp_int($request->get_param('days'), 1, 365);
+        // Support forcing bypass of caching during diagnostics/tests: add `&r=1` to request
+        $force_refresh = !empty($request->get_param('r')) ? 1 : 0;
 
         $empty_payload = array(
             'query' => $q,
@@ -91,7 +93,7 @@ class BeThemeSmartSearch_Rest_Suggest {
         $cache_ttl = BeThemeSmartSearch_Support_Cache::clamp_ttl($cache_ttl, 60, 3600);
 
         $cache_key = 'betheme_search_suggest_' . md5($q . '|' . $context . '|' . $limit . '|' . $days . '|v2');
-        if ($use_cache) {
+        if ($use_cache && empty($force_refresh)) {
             $cached = BeThemeSmartSearch_Support_Cache::get($cache_key);
             if ($cached !== false) {
                 return rest_ensure_response($cached);
@@ -197,7 +199,7 @@ class BeThemeSmartSearch_Rest_Suggest {
                 'debug' => $debug_info,
             );
 
-            if ($use_cache && $cache_ttl > 0) {
+            if ($use_cache && $cache_ttl > 0 && empty($force_refresh)) {
                 BeThemeSmartSearch_Support_Cache::set($cache_key, $payload, $cache_ttl);
             }
 
