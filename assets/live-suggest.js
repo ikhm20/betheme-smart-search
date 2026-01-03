@@ -1,11 +1,18 @@
 /* global bethemeSmartSearchLiveSuggest */
 
-(function () {
+(function (root) {
   "use strict";
+
+  root = root || window;
+  var Live = root.BSSLiveSuggest || (root.BSSLiveSuggest = {});
 
   function getConfig() {
     var cfg = window.bethemeSmartSearchLiveSuggest || {};
     return {
+      presearchUrl: String(cfg.presearch_url || ""),
+      presearchSelectionUrl: String(cfg.presearch_selection_url || ""),
+      presearchLogUrl: String(cfg.presearch_log_url || ""),
+      enablePresearchLogging: !!cfg.enable_presearch_logging,
       suggestUrl: String(cfg.suggest_url || ""),
       liveUrl: String(cfg.live_url || ""),
       debounceDesktopMs: Number(cfg.debounce_desktop_ms || cfg.debounce_ms || 250),
@@ -27,6 +34,9 @@
     heading_popular_products: "\u041f\u043e\u043f\u0443\u043b\u044f\u0440\u043d\u044b\u0435 \u0442\u043e\u0432\u0430\u0440\u044b",
     heading_products: "\u0422\u043e\u0432\u0430\u0440\u044b \u043f\u043e \u0430\u0440\u0442\u0438\u043a\u0443\u043b\u0443",
     heading_products_generic: "\u0422\u043e\u0432\u0430\u0440\u044b",
+    heading_words: "\u041f\u043e\u0434\u0441\u043a\u0430\u0437\u043a\u0438",
+    heading_categories: "\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0438",
+    heading_brands: "\u0411\u0440\u0435\u043d\u0434\u044b",
     heading_exact: "\u0422\u043e\u0447\u043d\u043e\u0435 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u0435",
     label_loading: "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430",
     label_clear_history: "\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0438\u0441\u0442\u043e\u0440\u0438\u044e",
@@ -120,6 +130,37 @@
       HistoryStore.save(cfg, list);
     },
   };
+
+  function logPresearch(cfg, event, query, meta) {
+    if (!cfg.enablePresearchLogging || !cfg.presearchLogUrl) return;
+    if (!event) return;
+
+    var payload = {
+      event: String(event),
+      query: String(query || ""),
+      context: String(cfg.context || "shop"),
+      meta: meta && typeof meta === "object" ? meta : {},
+    };
+
+    try {
+      var body = JSON.stringify(payload);
+      if (navigator && typeof navigator.sendBeacon === "function") {
+        var blob = new Blob([body], { type: "application/json" });
+        navigator.sendBeacon(cfg.presearchLogUrl, blob);
+        return;
+      }
+
+      window.fetch(cfg.presearchLogUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body,
+        credentials: "same-origin",
+        keepalive: true,
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
 
   function isCodeLike(query) {
     var q = String(query || "").trim();
@@ -239,7 +280,14 @@
     var list = box.querySelector(".mfn-live-search-list");
     if (!list) return;
     // Insert in reverse order because we always insert before firstChild.
-    var order = ["mfn-live-search-list-suggestions", "mfn-live-search-list-bss-products", "mfn-live-search-list-bss-exact"];
+    var order = [
+      "mfn-live-search-list-bss-words",
+      "mfn-live-search-list-suggestions",
+      "mfn-live-search-list-bss-categories",
+      "mfn-live-search-list-bss-brands",
+      "mfn-live-search-list-bss-products",
+      "mfn-live-search-list-bss-exact",
+    ];
     order.forEach(function (cls) {
       var el = list.querySelector("." + cls);
       if (el) list.insertBefore(el, list.firstChild);
@@ -330,6 +378,8 @@
 
     var li = document.createElement("li");
     li.setAttribute("data-category", "product");
+    li.setAttribute("data-bss-type", "product");
+    if (product.id) li.setAttribute("data-bss-id", product.id);
 
     var imgHtml = product.image ? '<img alt="" src="' + product.image + '" />' : "";
     var priceHtml = product.price ? String(product.price) : "";
@@ -368,6 +418,9 @@
       if (!p || !p.url) return;
       var li = document.createElement("li");
       li.setAttribute("data-category", "product");
+      li.setAttribute("data-bss-type", "product");
+      if (p.id) li.setAttribute("data-bss-id", p.id);
+      if (q) li.setAttribute("data-bss-query", q);
 
       var imgHtml = p.image ? '<img alt="" src="' + p.image + '" />' : "";
       var priceHtml = p.price ? String(p.price) : "";
@@ -401,18 +454,25 @@
     section.style.display = open ? "block" : "none";
   }
 
-  function showLoadingThemeProducts(cfg, box) {
+  function showLoadingThemeProducts(cfg, box, headingKey, headingFallback) {
     var section = getThemeSection(box, "mfn-live-search-list-shop");
     if (!section) return;
     var ul = section.querySelector("ul");
     if (!ul) return;
     ul.innerHTML = "";
-    renderHeading(ul, headingText(cfg, "heading_products_generic", FALLBACK_STRINGS.heading_products_generic));
+    renderHeading(
+      ul,
+      headingText(
+        cfg,
+        headingKey || "heading_products_generic",
+        headingFallback || FALLBACK_STRINGS.heading_products_generic
+      )
+    );
     renderSkeletonList(ul, Math.min(4, cfg.maxProducts));
     section.style.display = "block";
   }
 
-  function renderThemeProducts(cfg, box, products, q) {
+  function renderThemeProducts(cfg, box, products, q, headingKey, headingFallback) {
     var section = getThemeSection(box, "mfn-live-search-list-shop");
     if (!section) return;
     var ul = section.querySelector("ul");
@@ -424,12 +484,21 @@
       return;
     }
 
-    renderHeading(ul, headingText(cfg, "heading_products_generic", FALLBACK_STRINGS.heading_products_generic));
+    renderHeading(
+      ul,
+      headingText(
+        cfg,
+        headingKey || "heading_products_generic",
+        headingFallback || FALLBACK_STRINGS.heading_products_generic
+      )
+    );
 
     products.slice(0, cfg.maxProducts).forEach(function (p) {
       if (!p || !p.url) return;
       var li = document.createElement("li");
       li.setAttribute("data-category", "product");
+      li.setAttribute("data-bss-type", "product");
+      if (p.id) li.setAttribute("data-bss-id", p.id);
 
       var imgHtml = p.image ? '<img alt="" src="' + p.image + '" />' : "";
       var priceHtml = p.price ? String(p.price) : "";
@@ -451,7 +520,203 @@
     section.style.display = "block";
   }
 
-  function renderSuggestions(cfg, input, box, payload) {
+  function renderWords(cfg, input, box, words, q) {
+    var section = ensureSection(box, "mfn-live-search-list-bss-words");
+    if (!section) return;
+    var ul = section.querySelector("ul");
+    if (!ul) return;
+    ul.innerHTML = "";
+
+    if (!Array.isArray(words) || !words.length) {
+      section.style.display = "none";
+      return;
+    }
+
+    renderHeading(ul, headingText(cfg, "heading_words", FALLBACK_STRINGS.heading_words));
+
+    words.slice(0, cfg.maxItems).forEach(function (word) {
+      var w = String(word || "").trim();
+      if (!w) return;
+      var li = document.createElement("li");
+      li.setAttribute("data-category", "suggestion");
+      li.setAttribute("data-bss-type", "word");
+      li.setAttribute("data-bss-query", w);
+
+      var a = document.createElement("a");
+      a.href = buildSearchUrl(input, w);
+      a.innerHTML = highlightHtml(w, q);
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+
+    section.style.display = "block";
+    reorderSections(box);
+  }
+
+  function renderSuggestItems(cfg, input, box, suggests, q) {
+    var section = ensureSection(box, "mfn-live-search-list-suggestions");
+    if (!section) return;
+    var ul = section.querySelector("ul");
+    if (!ul) return;
+    ul.innerHTML = "";
+
+    if (!Array.isArray(suggests) || !suggests.length) {
+      section.style.display = "none";
+      return;
+    }
+
+    renderHeading(ul, headingText(cfg, "heading_suggestions", FALLBACK_STRINGS.heading_suggestions));
+
+    suggests.slice(0, cfg.maxItems).forEach(function (item) {
+      var label = item && item.query ? String(item.query).trim() : "";
+      if (!label) return;
+      var url = item && item.url ? String(item.url) : "";
+      if (!url) {
+        url = buildSearchUrl(input, label);
+      }
+
+      var li = document.createElement("li");
+      li.setAttribute("data-category", "suggestion");
+      li.setAttribute("data-bss-type", "suggest");
+      li.setAttribute("data-bss-query", label);
+
+      var a = document.createElement("a");
+      a.href = url;
+      a.innerHTML = highlightHtml(label, q);
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+
+    section.style.display = "block";
+    reorderSections(box);
+  }
+
+  function renderCategories(cfg, input, box, categories, q) {
+    var section = ensureSection(box, "mfn-live-search-list-bss-categories");
+    if (!section) return;
+    var ul = section.querySelector("ul");
+    if (!ul) return;
+    ul.innerHTML = "";
+
+    if (!Array.isArray(categories) || !categories.length) {
+      section.style.display = "none";
+      return;
+    }
+
+    renderHeading(ul, headingText(cfg, "heading_categories", FALLBACK_STRINGS.heading_categories));
+
+    categories.slice(0, cfg.maxItems).forEach(function (c) {
+      if (!c || !c.url || !c.title) return;
+      var li = document.createElement("li");
+      li.setAttribute("data-category", "category");
+      li.setAttribute("data-bss-type", "category");
+      if (c.searchUid) li.setAttribute("data-bss-id", c.searchUid);
+      if (c.query || q) li.setAttribute("data-bss-query", c.query || q);
+
+      var imgHtml = c.imageUrl ? '<img alt="" src="' + c.imageUrl + '" />' : "";
+      var subtitle = c.rootCategoryTitle
+        ? '<span class="mfn-ls-price">' + escapeHtml(String(c.rootCategoryTitle)) + "</span>"
+        : "";
+
+      li.innerHTML =
+        imgHtml +
+        '<div class="mfn-live-search-texts">' +
+        '<a href="' +
+        c.url +
+        '">' +
+        highlightHtml(String(c.title || ""), q) +
+        "</a>" +
+        subtitle +
+        "</div>";
+
+      ul.appendChild(li);
+    });
+
+    section.style.display = "block";
+    reorderSections(box);
+  }
+
+  function renderBrands(cfg, input, box, brands, q) {
+    var section = ensureSection(box, "mfn-live-search-list-bss-brands");
+    if (!section) return;
+    var ul = section.querySelector("ul");
+    if (!ul) return;
+    ul.innerHTML = "";
+
+    if (!Array.isArray(brands) || !brands.length) {
+      section.style.display = "none";
+      return;
+    }
+
+    renderHeading(ul, headingText(cfg, "heading_brands", FALLBACK_STRINGS.heading_brands));
+
+    brands.slice(0, cfg.maxItems).forEach(function (b) {
+      if (!b || !b.url || !b.name) return;
+      var li = document.createElement("li");
+      li.setAttribute("data-category", "brand");
+      li.setAttribute("data-bss-type", "brand");
+      if (b.id) li.setAttribute("data-bss-id", b.id);
+      if (q) li.setAttribute("data-bss-query", q);
+
+      var imgHtml = b.imageUrl ? '<img alt="" src="' + b.imageUrl + '" />' : "";
+
+      li.innerHTML =
+        imgHtml +
+        '<div class="mfn-live-search-texts">' +
+        '<a href="' +
+        b.url +
+        '">' +
+        highlightHtml(String(b.name || ""), q) +
+        "</a>" +
+        "</div>";
+
+      ul.appendChild(li);
+    });
+
+    section.style.display = "block";
+    reorderSections(box);
+  }
+
+  function renderSelection(cfg, input, box, payload) {
+    var q = String(payload && payload.query ? payload.query : (input && input.value ? input.value : "")).trim();
+    var words = payload && Array.isArray(payload.words) ? payload.words : [];
+    var suggests = payload && Array.isArray(payload.suggests) ? payload.suggests : [];
+    var categories = payload && Array.isArray(payload.categories) ? payload.categories : [];
+    var brands = payload && Array.isArray(payload.brands) ? payload.brands : [];
+
+    var hasApiData = words.length || suggests.length || categories.length || brands.length;
+
+    if (q === "") {
+      var history = HistoryStore.get(cfg);
+      if (history && history.length) {
+        renderLegacySuggestions(cfg, input, box, payload);
+        renderWords(cfg, input, box, [], q);
+        renderCategories(cfg, input, box, [], q);
+        renderBrands(cfg, input, box, [], q);
+        return;
+      }
+    }
+
+    if (hasApiData) {
+      if (q === "") {
+        renderWords(cfg, input, box, [], q);
+        renderSuggestItems(cfg, input, box, suggests, q);
+        renderCategories(cfg, input, box, [], q);
+        renderBrands(cfg, input, box, [], q);
+        return;
+      }
+
+      renderWords(cfg, input, box, words, q);
+      renderSuggestItems(cfg, input, box, suggests, q);
+      renderCategories(cfg, input, box, categories, q);
+      renderBrands(cfg, input, box, brands, q);
+      return;
+    }
+
+    renderLegacySuggestions(cfg, input, box, payload);
+  }
+
+  function renderLegacySuggestions(cfg, input, box, payload) {
     var section = ensureSection(box, "mfn-live-search-list-suggestions");
     if (!section) return;
     var ul = section.querySelector("ul");
@@ -484,6 +749,7 @@
           var li = document.createElement("li");
           li.className = "bss-history-item";
           li.setAttribute("data-category", "suggestion");
+          li.setAttribute("data-bss-type", "history");
           li.setAttribute("data-bss-query", h);
           var removeLabel = headingText(cfg, "label_remove_history", FALLBACK_STRINGS.label_remove_history);
           li.innerHTML =
@@ -516,6 +782,8 @@
       popularProducts.forEach(function (p) {
         var li = document.createElement("li");
         li.setAttribute("data-category", "product");
+        li.setAttribute("data-bss-type", "product");
+        if (p && p.id) li.setAttribute("data-bss-id", p.id);
 
         var imgHtml = p.image ? '<img alt="" src="' + p.image + '" />' : "";
         var priceHtml = p.price ? String(p.price) : "";
@@ -577,6 +845,8 @@
     items.forEach(function (it) {
       var li = document.createElement("li");
       li.setAttribute("data-category", "suggestion");
+      li.setAttribute("data-bss-type", "suggest");
+      li.setAttribute("data-bss-query", it.query);
       var a = document.createElement("a");
       a.href = buildSearchUrl(input, it.query);
       a.innerHTML = highlightHtml(it.query, q);
@@ -588,6 +858,64 @@
     reorderSections(box);
   }
 
+  Live.config = {
+    getConfig: getConfig,
+    getDebounceMs: getDebounceMs,
+    FALLBACK_STRINGS: FALLBACK_STRINGS,
+  };
+  Live.utils = {
+    debounce: debounce,
+    safeJsonParse: safeJsonParse,
+    isCodeLike: isCodeLike,
+    escapeHtml: escapeHtml,
+    escapeRegExp: escapeRegExp,
+    highlightHtml: highlightHtml,
+    normalizeHeadingValue: normalizeHeadingValue,
+    headingText: headingText,
+    buildRestUrl: buildRestUrl,
+    buildSearchUrl: buildSearchUrl,
+  };
+  Live.history = HistoryStore;
+  Live.render = {
+    findLiveBox: findLiveBox,
+    getOpenContainer: getOpenContainer,
+    setOpenState: setOpenState,
+    ensureSection: ensureSection,
+    reorderSections: reorderSections,
+    hideSection: hideSection,
+    renderHeading: renderHeading,
+    renderSkeletonList: renderSkeletonList,
+    showLoading: showLoading,
+    renderExactProduct: renderExactProduct,
+    renderCodeProducts: renderCodeProducts,
+    getThemeSection: getThemeSection,
+    showThemeSection: showThemeSection,
+    showLoadingThemeProducts: showLoadingThemeProducts,
+    renderThemeProducts: renderThemeProducts,
+    renderWords: renderWords,
+    renderSuggestItems: renderSuggestItems,
+    renderCategories: renderCategories,
+    renderBrands: renderBrands,
+    renderSelection: renderSelection,
+    renderLegacySuggestions: renderLegacySuggestions,
+  };
+  Live.api = {
+    logPresearch: logPresearch,
+    fetchSelection: fetchSelection,
+    fetchLiveExact: fetchLiveExact,
+    fetchProducts: fetchProducts,
+  };
+  Live.state = {
+    getState: getState,
+    isSearchInput: isSearchInput,
+    handleInputOrFocus: handleInputOrFocus,
+  };
+  Live.nav = {
+    collectNavAnchors: collectNavAnchors,
+    clearNavActive: clearNavActive,
+    setNavActive: setNavActive,
+  };
+
   var cfg = getConfig();
   var waitMs = getDebounceMs(cfg);
 
@@ -595,7 +923,15 @@
   function getState(input) {
     var st = perInputState.get(input);
     if (!st) {
-      st = { seq: 0, suggestAbort: null, liveExactAbort: null, liveFullAbort: null, navIndex: -1, navQuery: "" };
+      st = {
+        seq: 0,
+        selectionAbort: null,
+        productsAbort: null,
+        liveExactAbort: null,
+        navIndex: -1,
+        navQuery: "",
+        lastShowQuery: "",
+      };
       perInputState.set(input, st);
     }
     return st;
@@ -609,13 +945,29 @@
     return true;
   }
 
-  function fetchSuggestions(seq, input, box, q) {
+  function logShowOnce(cfg, input, q, meta) {
+    if (!cfg.enablePresearchLogging || !cfg.presearchLogUrl) return;
+    if (!q) return;
     var st = getState(input);
-    if (st.suggestAbort && st.suggestAbort.abort) st.suggestAbort.abort();
-    var controller = window.AbortController ? new AbortController() : null;
-    st.suggestAbort = controller;
+    if (st.lastShowQuery === q) return;
+    st.lastShowQuery = q;
+    logPresearch(cfg, "show", q, meta || {});
+  }
 
-    var url = buildRestUrl(cfg.suggestUrl, { q: q, context: cfg.context, limit: cfg.maxItems });
+  function fetchSelection(seq, input, box, q) {
+    var st = getState(input);
+    if (st.selectionAbort && st.selectionAbort.abort) st.selectionAbort.abort();
+    var controller = window.AbortController ? new AbortController() : null;
+    st.selectionAbort = controller;
+
+    var useLegacy = !cfg.presearchSelectionUrl && !!cfg.suggestUrl;
+    var baseUrl = useLegacy ? cfg.suggestUrl : cfg.presearchSelectionUrl;
+    if (!baseUrl) return;
+
+    var params = useLegacy
+      ? { q: q, context: cfg.context, limit: cfg.maxItems }
+      : { query: q, context: cfg.context, limit: cfg.maxItems };
+    var url = buildRestUrl(baseUrl, params);
     if (!url) return;
 
     window
@@ -626,7 +978,19 @@
       })
       .then(function (data) {
         if (getState(input).seq !== seq) return;
-        renderSuggestions(cfg, input, box, data || {});
+        var payload = data || {};
+        renderSelection(cfg, input, box, payload);
+
+        var words = payload && Array.isArray(payload.words) ? payload.words.length : 0;
+        var suggests = payload && Array.isArray(payload.suggests) ? payload.suggests.length : 0;
+        var categories = payload && Array.isArray(payload.categories) ? payload.categories.length : 0;
+        var brands = payload && Array.isArray(payload.brands) ? payload.brands.length : 0;
+        logShowOnce(cfg, input, q, {
+          words: words,
+          suggests: suggests,
+          categories: categories,
+          brands: brands,
+        });
       })
       .catch(function () {
         // fail silently
@@ -657,13 +1021,20 @@
       });
   }
 
-  function fetchLiveFull(seq, input, box, q) {
+  function fetchProducts(seq, input, box, q) {
     var st = getState(input);
-    if (st.liveFullAbort && st.liveFullAbort.abort) st.liveFullAbort.abort();
+    if (st.productsAbort && st.productsAbort.abort) st.productsAbort.abort();
     var controller = window.AbortController ? new AbortController() : null;
-    st.liveFullAbort = controller;
+    st.productsAbort = controller;
 
-    var url = buildRestUrl(cfg.liveUrl, { q: q, context: cfg.context, limit: cfg.maxProducts, stage: "full" });
+    var useLegacy = !cfg.presearchUrl && !!cfg.liveUrl;
+    var baseUrl = useLegacy ? cfg.liveUrl : cfg.presearchUrl;
+    if (!baseUrl) return;
+
+    var params = useLegacy
+      ? { q: q, context: cfg.context, limit: cfg.maxProducts, stage: "full" }
+      : { query: q, context: cfg.context, limit: cfg.maxProducts };
+    var url = buildRestUrl(baseUrl, params);
     if (!url) return;
 
     window
@@ -675,8 +1046,12 @@
       .then(function (data) {
         if (getState(input).seq !== seq) return;
         var products = data && Array.isArray(data.products) ? data.products : [];
+        var headingKey = q === "" ? "heading_popular_products" : "heading_products_generic";
+        var headingFallback = q === "" ? FALLBACK_STRINGS.heading_popular_products : FALLBACK_STRINGS.heading_products_generic;
+
         // Always render products into the theme's Shop section (so we don't depend on Betheme's own live-search relevance).
-        renderThemeProducts(cfg, box, products, q);
+        renderThemeProducts(cfg, box, products, q, headingKey, headingFallback);
+
         // Keep legacy "code products" section for SKU-like queries if enabled.
         if (cfg.showCodeProducts && isCodeLike(q)) {
           renderCodeProducts(cfg, box, products);
@@ -686,6 +1061,8 @@
         if (data && data.exact_product) {
           renderExactProduct(cfg, box, data.exact_product);
         }
+
+        logShowOnce(cfg, input, q, { products: products.length });
       })
       .catch(function () {
         // ignore
@@ -707,38 +1084,40 @@
     st.seq += 1;
     var seq = st.seq;
 
-    if (cfg.suggestUrl) {
+    if (cfg.presearchSelectionUrl || cfg.suggestUrl) {
       if (q === "") {
         showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", FALLBACK_STRINGS.heading_suggestions, 3);
-        fetchSuggestions(seq, input, box, q);
+        fetchSelection(seq, input, box, q);
+      } else if (cfg.showSuggestions) {
+        showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", FALLBACK_STRINGS.heading_suggestions, 3);
+        fetchSelection(seq, input, box, q);
       } else {
-        if (cfg.showSuggestions) {
-          showLoading(cfg, box, "mfn-live-search-list-suggestions", "heading_suggestions", FALLBACK_STRINGS.heading_suggestions, 3);
-          fetchSuggestions(seq, input, box, q);
-        } else {
-          hideSection(box, "mfn-live-search-list-suggestions");
-        }
+        hideSection(box, "mfn-live-search-list-bss-words");
+        hideSection(box, "mfn-live-search-list-suggestions");
+        hideSection(box, "mfn-live-search-list-bss-categories");
+        hideSection(box, "mfn-live-search-list-bss-brands");
       }
     }
 
     // Show product results for text queries too (not only for SKU-like queries).
-    // This makes results stable regardless of word order (we use our REST endpoint).
-    if (cfg.liveUrl && q.length >= cfg.minChars) {
-      showLoadingThemeProducts(cfg, box);
-      fetchLiveFull(seq, input, box, q);
-    } else if (q === "") {
-      // Hide theme products section when query is empty to avoid showing stale results.
+    if ((cfg.presearchUrl || cfg.liveUrl) && (q === "" || q.length >= cfg.minChars)) {
+      var headingKey = q === "" ? "heading_popular_products" : "heading_products_generic";
+      var headingFallback = q === "" ? FALLBACK_STRINGS.heading_popular_products : FALLBACK_STRINGS.heading_products_generic;
+      showLoadingThemeProducts(cfg, box, headingKey, headingFallback);
+      fetchProducts(seq, input, box, q);
+    } else {
+      // Hide theme products section when query is empty or too short to avoid stale results.
       showThemeSection(box, "mfn-live-search-list-shop", false);
     }
 
     if (cfg.showCodeProducts && cfg.liveUrl && isCodeLike(q) && q.length >= 2) {
       showLoading(cfg, box, "mfn-live-search-list-bss-exact", "heading_exact", FALLBACK_STRINGS.heading_exact, 1);
-      showLoading(cfg, box, "mfn-live-search-list-bss-products", "heading_products", FALLBACK_STRINGS.heading_products, Math.min(3, cfg.maxProducts));
       fetchLiveExact(seq, input, box, q);
-      fetchLiveFull(seq, input, box, q);
     } else {
       hideSection(box, "mfn-live-search-list-bss-exact");
-      hideSection(box, "mfn-live-search-list-bss-products");
+      if (!isCodeLike(q) || q.length < cfg.minChars) {
+        hideSection(box, "mfn-live-search-list-bss-products");
+      }
     }
   }
 
@@ -876,6 +1255,15 @@
         e.preventDefault();
         var li = a.closest ? a.closest("li") : null;
         var q = li && li.getAttribute ? li.getAttribute("data-bss-query") : "";
+        var type = li && li.getAttribute ? li.getAttribute("data-bss-type") : "";
+        if (type) {
+          logPresearch(cfg, "click", q || active.input.value || a.textContent || "", {
+            type: type,
+            id: li.getAttribute("data-bss-id") || "",
+            label: a.textContent || "",
+            url: a.href || "",
+          });
+        }
         HistoryStore.push(cfg, q || active.input.value || a.textContent || "");
         window.location.href = a.href;
       }
@@ -901,6 +1289,15 @@
 
       var li = a.closest ? a.closest("li") : null;
       var q = li && li.getAttribute ? li.getAttribute("data-bss-query") : "";
+      var type = li && li.getAttribute ? li.getAttribute("data-bss-type") : "";
+      if (type) {
+        logPresearch(cfg, "click", q || active.input.value || a.textContent || "", {
+          type: type,
+          id: li.getAttribute("data-bss-id") || "",
+          label: a.textContent || "",
+          url: a.href || "",
+        });
+      }
       HistoryStore.push(cfg, q || active.input.value || a.textContent || "");
     },
     true
@@ -988,4 +1385,4 @@
     },
     true
   );
-})();
+})(window);

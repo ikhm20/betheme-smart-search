@@ -79,12 +79,20 @@ class BeThemeSmartSearch_Hooks {
         return $post_type === 'product';
     }
 
-    public function maybe_enhance_shop_search_query($query) {
-        if (!($query instanceof WP_Query) || is_admin() || wp_doing_ajax()) {
-            return;
-        }
+    private function is_frontend_request() {
+        return !is_admin() && !wp_doing_ajax();
+    }
 
-        if (!$query->is_main_query() || !$query->is_search()) {
+    private function is_frontend_search_request() {
+        return $this->is_frontend_request() && is_search();
+    }
+
+    private function is_main_search_query($query) {
+        return $query instanceof WP_Query && $query->is_main_query() && $query->is_search();
+    }
+
+    public function maybe_enhance_shop_search_query($query) {
+        if (!$this->is_frontend_request() || !$this->is_main_search_query($query)) {
             return;
         }
 
@@ -141,11 +149,7 @@ class BeThemeSmartSearch_Hooks {
     }
 
     public function maybe_log_search_page() {
-        if (is_admin() || wp_doing_ajax()) {
-            return;
-        }
-
-        if (!is_search()) {
+        if (!$this->is_frontend_search_request()) {
             return;
         }
 
@@ -184,11 +188,7 @@ class BeThemeSmartSearch_Hooks {
      * This makes "type SKU and press Enter" behave as users expect.
      */
     public function maybe_redirect_exact_match_to_product() {
-        if (is_admin() || wp_doing_ajax()) {
-            return;
-        }
-
-        if (!is_search()) {
+        if (!$this->is_frontend_search_request()) {
             return;
         }
 
@@ -346,7 +346,7 @@ class BeThemeSmartSearch_Hooks {
             return $posts;
         }
 
-        if (!($query instanceof WP_Query) || is_admin() || wp_doing_ajax()) {
+        if (!$this->is_frontend_request() || !($query instanceof WP_Query)) {
             return $posts;
         }
 

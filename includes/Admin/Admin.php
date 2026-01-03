@@ -177,9 +177,135 @@ class BeThemeSmartSearch_Admin {
         );
 
         wp_enqueue_script(
+            'betheme-smart-search-admin-i18n',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-i18n.js',
+            array('wp-i18n'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-config',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-config.js',
+            array('betheme-smart-search-admin-i18n'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-utils',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-utils.js',
+            array('betheme-smart-search-admin-config', 'betheme-smart-search-admin-i18n'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-api',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-api.js',
+            array('betheme-smart-search-admin-config', 'betheme-smart-search-admin-utils', 'wp-api-fetch'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-state',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-state.js',
+            array('betheme-smart-search-admin-config', 'wp-element'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-notices',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-notices.js',
+            array('wp-element'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-ui',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-ui.js',
+            array('betheme-smart-search-admin-utils', 'betheme-smart-search-admin-i18n', 'wp-element', 'wp-components'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-screens-env',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-screens-env.js',
+            array('betheme-smart-search-admin-ui', 'betheme-smart-search-admin-utils', 'betheme-smart-search-admin-i18n', 'wp-element', 'wp-components'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-screens-dashboard',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-screens-dashboard.js',
+            array('betheme-smart-search-admin-screens-env'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-screens-settings',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-screens-settings.js',
+            array('betheme-smart-search-admin-screens-env'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-screens-analytics',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-screens-analytics.js',
+            array('betheme-smart-search-admin-screens-env'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-screens-tools',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-screens-tools.js',
+            array('betheme-smart-search-admin-screens-env'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-events',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-events.js',
+            array('betheme-smart-search-admin-config', 'wp-element'),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
+            'betheme-smart-search-admin-app-ui',
+            BETHEME_SMART_SEARCH_URL . 'assets/admin/bss-app.js',
+            array(
+                'betheme-smart-search-admin-state',
+                'betheme-smart-search-admin-notices',
+                'betheme-smart-search-admin-api',
+                'betheme-smart-search-admin-screens-dashboard',
+                'betheme-smart-search-admin-screens-settings',
+                'betheme-smart-search-admin-screens-analytics',
+                'betheme-smart-search-admin-screens-tools',
+                'betheme-smart-search-admin-events',
+                'betheme-smart-search-admin-ui',
+                'betheme-smart-search-admin-utils',
+                'betheme-smart-search-admin-i18n',
+                'wp-element',
+                'wp-components',
+            ),
+            $this->version,
+            true
+        );
+
+        wp_enqueue_script(
             'betheme-smart-search-admin-app',
             BETHEME_SMART_SEARCH_URL . 'assets/admin-app.js',
-            array('wp-element', 'wp-components', 'wp-i18n', 'wp-api-fetch'),
+            array('betheme-smart-search-admin-app-ui'),
             $this->version,
             true
         );

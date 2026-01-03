@@ -33,16 +33,18 @@ class BeThemeSmartSearch_Search_Service {
             return new WP_Error('missing_query', 'Search query is required', array('status' => 400));
         }
 
+        $context = $this->normalize_context($context);
+        $limit = $this->normalize_limit($limit);
+
         $variants = BeThemeSmartSearch_Search_Variants::build($query, $this->options);
         if (!empty($variants)) {
             $query = $variants[0];
         }
 
         $use_cache = !empty($this->options['enable_caching']);
-        $cache_ttl = !empty($this->options['cache_ttl']) ? absint($this->options['cache_ttl']) : HOUR_IN_SECONDS;
-        $cache_ttl = BeThemeSmartSearch_Support_Cache::clamp_ttl($cache_ttl, 60, 86400);
+        $cache_ttl = $this->get_cache_ttl();
 
-        $cache_key = 'betheme_search_' . md5($query . '|' . $context . '|' . $limit);
+        $cache_key = $this->get_cache_key($query, $context, $limit);
         if ($use_cache) {
             $cached_results = BeThemeSmartSearch_Support_Cache::get($cache_key);
             if ($cached_results !== false) {
@@ -56,7 +58,7 @@ class BeThemeSmartSearch_Search_Service {
             BeThemeSmartSearch_Support_Cache::set($cache_key, $results, $cache_ttl);
         }
 
-        BeThemeSmartSearch_Helpers::log_search_query($query, count($results['products']));
+        BeThemeSmartSearch_Helpers::log_search_query($query, count($results['products']), $context);
 
         return new WP_REST_Response($results, 200);
     }
@@ -104,7 +106,7 @@ class BeThemeSmartSearch_Search_Service {
             return array();
         }
 
-        $context = is_string($context) && $context !== '' ? $context : 'shop';
+        $context = $this->normalize_context($context);
         $days = 30;
         $limit = 8;
 
@@ -123,5 +125,27 @@ class BeThemeSmartSearch_Search_Service {
         }
 
         return array_slice(array_values(array_unique($out)), 0, 8);
+    }
+
+    private function normalize_context($context) {
+        $context = is_string($context) ? trim($context) : '';
+        if ($context === '') {
+            $context = BeThemeSmartSearch_Helpers::get_search_context();
+        }
+        return $context;
+    }
+
+    private function normalize_limit($limit) {
+        $limit = (int) $limit;
+        return max(1, $limit);
+    }
+
+    private function get_cache_ttl() {
+        $cache_ttl = !empty($this->options['cache_ttl']) ? absint($this->options['cache_ttl']) : HOUR_IN_SECONDS;
+        return BeThemeSmartSearch_Support_Cache::clamp_ttl($cache_ttl, 60, 86400);
+    }
+
+    private function get_cache_key($query, $context, $limit) {
+        return 'betheme_search_' . md5($query . '|' . $context . '|' . $limit);
     }
 }

@@ -30,33 +30,35 @@ class BeThemeSmartSearch_Query {
      * Modify the main search query
      */
     public function modify_search_query($query) {
-        if (!is_admin() && $query->is_search() && $query->is_main_query()) {
-            if ($this->should_preserve_theme_search()) {
-                return;
-            }
+        if (!$this->is_frontend_main_search_query($query)) {
+            return;
+        }
 
-            $search_term = BeThemeSmartSearch_Helpers::get_search_term();
+        if ($this->should_preserve_theme_search()) {
+            return;
+        }
 
-            // Always search in products if WooCommerce is active, but also allow other post types
-            if (BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
-                $query->set('post_type', array('product', 'post', 'page'));
-            }
+        $search_term = BeThemeSmartSearch_Helpers::get_search_term();
 
-            // Improve search relevance
-            $query->set('posts_per_page', 20);
+        // Always search in products if WooCommerce is active, but also allow other post types
+        if (BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
+            $query->set('post_type', array('product', 'post', 'page'));
+        }
 
-            // Add meta query for SKU search
-            if (!empty($search_term) && BeThemeSmartSearch_Search_Normalize::is_code_like_query($search_term)) {
-                $meta_keys = BeThemeSmartSearch_Search_MetaKeys::get_code_meta_keys($this->options);
-                $meta_query = $this->build_meta_query_for_codes($search_term, $meta_keys);
-                if (!empty($meta_query)) {
-                    $existing = $query->get('meta_query', array());
-                    if (!is_array($existing)) {
-                        $existing = array();
-                    }
-                    $existing[] = $meta_query;
-                    $query->set('meta_query', $existing);
+        // Improve search relevance
+        $query->set('posts_per_page', 20);
+
+        // Add meta query for SKU search
+        if (!empty($search_term) && BeThemeSmartSearch_Search_Normalize::is_code_like_query($search_term)) {
+            $meta_keys = BeThemeSmartSearch_Search_MetaKeys::get_code_meta_keys($this->options);
+            $meta_query = $this->build_meta_query_for_codes($search_term, $meta_keys);
+            if (!empty($meta_query)) {
+                $existing = $query->get('meta_query', array());
+                if (!is_array($existing)) {
+                    $existing = array();
                 }
+                $existing[] = $meta_query;
+                $query->set('meta_query', $existing);
             }
         }
     }
@@ -67,20 +69,24 @@ class BeThemeSmartSearch_Query {
     public function search_join($join, $query) {
         global $wpdb;
 
-        if (!is_admin() && $query->is_search() && $query->is_main_query()) {
-            if ($this->should_preserve_theme_search()) {
-                return $join;
-            }
-            $search_term = BeThemeSmartSearch_Helpers::get_search_term();
-            if ($search_term === '' || !BeThemeSmartSearch_Search_Normalize::is_code_like_query($search_term)) {
-                return $join;
-            }
-            if (empty(BeThemeSmartSearch_Search_MetaKeys::get_code_meta_keys($this->options))) {
-                return $join;
-            }
-            // Join postmeta table for meta searches
-            $join .= " LEFT JOIN {$wpdb->postmeta} AS smart_search_meta ON {$wpdb->posts}.ID = smart_search_meta.post_id ";
+        if (!$this->is_frontend_main_search_query($query)) {
+            return $join;
         }
+
+        if ($this->should_preserve_theme_search()) {
+            return $join;
+        }
+
+        $search_term = BeThemeSmartSearch_Helpers::get_search_term();
+        if ($search_term === '' || !BeThemeSmartSearch_Search_Normalize::is_code_like_query($search_term)) {
+            return $join;
+        }
+        if (empty(BeThemeSmartSearch_Search_MetaKeys::get_code_meta_keys($this->options))) {
+            return $join;
+        }
+
+        // Join postmeta table for meta searches
+        $join .= " LEFT JOIN {$wpdb->postmeta} AS smart_search_meta ON {$wpdb->posts}.ID = smart_search_meta.post_id ";
 
         return $join;
     }
@@ -99,37 +105,44 @@ class BeThemeSmartSearch_Query {
     public function search_relevance($search, $query) {
         global $wpdb;
 
-        if (!is_admin() && $query->is_search() && $query->is_main_query()) {
-            if ($this->should_preserve_theme_search()) {
-                return $search;
-            }
-            $search_term = BeThemeSmartSearch_Helpers::get_search_term();
-            if (!empty($search_term)) {
-                $code_meta_sql = '';
-                if (BeThemeSmartSearch_Search_Normalize::is_code_like_query($search_term)) {
-                    $code_meta_sql = $this->build_meta_search_sql($search_term);
-                }
+        if (!$this->is_frontend_main_search_query($query)) {
+            return $search;
+        }
 
-                // If there's already a search condition, extend it
-                if (!empty($search) && strpos($search, 'AND') !== false) {
-                    // Add our additional search conditions
-                    if ($code_meta_sql !== '') {
-                        $search .= " OR ({$code_meta_sql})";
+        if ($this->should_preserve_theme_search()) {
+            return $search;
+        }
+
+        $search_term = BeThemeSmartSearch_Helpers::get_search_term();
+        if (!empty($search_term)) {
+            $code_meta_sql = '';
+            if (BeThemeSmartSearch_Search_Normalize::is_code_like_query($search_term)) {
+                $code_meta_sql = $this->build_meta_search_sql($search_term);
+            }
+
+            $search_term_escaped = esc_sql($wpdb->esc_like($search_term));
+
+            // If there's already a search condition, extend it safely.
+            if (!empty($search)) {
+                if ($code_meta_sql !== '') {
+                    $search_body = preg_replace('/^\\s*AND\\s*/i', '', $search);
+                    $search_body = trim($search_body);
+                    if ($search_body !== '') {
+                        $search = " AND ({$search_body} OR ({$code_meta_sql}))";
                     }
-                } else {
-                    $search_term_escaped = esc_sql($wpdb->esc_like($search_term));
-                    // No existing search, create our own
-                    $search = " AND (
-                        ({$wpdb->posts}.post_title LIKE '%{$search_term_escaped}%')
-                        OR ({$wpdb->posts}.post_content LIKE '%{$search_term_escaped}%')
-                        OR ({$wpdb->posts}.post_excerpt LIKE '%{$search_term_escaped}%')
-                        " . ($code_meta_sql !== '' ? "OR ({$code_meta_sql})" : '') . "
-                    ";
-
-                    $search .= ") ";
                 }
+            } else {
+                // No existing search, create our own
+                $search = " AND (
+                    ({$wpdb->posts}.post_title LIKE '%{$search_term_escaped}%')
+                    OR ({$wpdb->posts}.post_content LIKE '%{$search_term_escaped}%')
+                    OR ({$wpdb->posts}.post_excerpt LIKE '%{$search_term_escaped}%')
+                    " . ($code_meta_sql !== '' ? "OR ({$code_meta_sql})" : '') . "
+                ";
 
+                $search .= ") ";
             }
+
         }
 
         return $search;
@@ -141,15 +154,18 @@ class BeThemeSmartSearch_Query {
     public function search_groupby($groupby, $query) {
         global $wpdb;
 
-        if (!is_admin() && $query->is_search() && $query->is_main_query()) {
-            if ($this->should_preserve_theme_search()) {
-                return $groupby;
-            }
-            if (!empty($groupby)) {
-                $groupby .= ", ";
-            }
-            $groupby .= "{$wpdb->posts}.ID";
+        if (!$this->is_frontend_main_search_query($query)) {
+            return $groupby;
         }
+
+        if ($this->should_preserve_theme_search()) {
+            return $groupby;
+        }
+
+        if (!empty($groupby)) {
+            $groupby .= ", ";
+        }
+        $groupby .= "{$wpdb->posts}.ID";
 
         return $groupby;
     }
@@ -232,5 +248,15 @@ class BeThemeSmartSearch_Query {
      */
     private function should_preserve_theme_search() {
         return !empty($this->options['preserve_betheme_search']);
+    }
+
+    private function is_frontend_main_search_query($query) {
+        if (is_admin()) {
+            return false;
+        }
+        if (!($query instanceof WP_Query)) {
+            return false;
+        }
+        return $query->is_search() && $query->is_main_query();
     }
 }

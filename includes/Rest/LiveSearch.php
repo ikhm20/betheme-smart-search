@@ -75,11 +75,8 @@ class BeThemeSmartSearch_Rest_LiveSearch {
             return new WP_Error('missing_query', 'Search query is required', array('status' => 400));
         }
 
-        $context = (string) $request->get_param('context');
-        $context = $context !== '' ? $context : 'shop';
-
-        $limit = (int) $request->get_param('limit');
-        $limit = max(1, min(20, $limit));
+        $context = $this->normalize_context($request->get_param('context'));
+        $limit = $this->clamp_int($request->get_param('limit'), 1, 20);
 
         $stage = (string) $request->get_param('stage');
         $stage = strtolower(trim($stage));
@@ -153,5 +150,18 @@ class BeThemeSmartSearch_Rest_LiveSearch {
         }
 
         return rest_ensure_response($payload);
+    }
+
+    private function normalize_context($context) {
+        $context = sanitize_text_field($context);
+        $context = is_string($context) ? trim($context) : '';
+        return $context !== '' ? $context : 'shop';
+    }
+
+    private function clamp_int($value, $min, $max) {
+        $value = (int) $value;
+        $min = (int) $min;
+        $max = (int) $max;
+        return max($min, min($max, $value));
     }
 }

@@ -23,6 +23,7 @@ spl_autoload_register(function ($class) {
         'BeThemeSmartSearch_Rest_LiveSearch' => 'includes/Rest/LiveSearch.php',
         'BeThemeSmartSearch_Rest_Query' => 'includes/Rest/Query.php',
         'BeThemeSmartSearch_Rest_Suggest' => 'includes/Rest/Suggest.php',
+        'BeThemeSmartSearch_Rest_Presearch' => 'includes/Rest/Presearch.php',
         'BeThemeSmartSearch_Search_History' => 'includes/Search/History.php',
         'BeThemeSmartSearch_Search_MetaQuery' => 'includes/Search/MetaQuery.php',
         'BeThemeSmartSearch_Search_MetaKeys' => 'includes/Search/MetaKeys.php',

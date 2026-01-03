@@ -104,7 +104,7 @@ class BeThemeSmartSearch_Support_Options {
             'product_meta_keys' => self::get_default_product_meta_keys(),
             'code_match_mode' => 'contains',
             'enable_synonyms' => 1,
-            'synonyms_rules' => "íàøèâêà=ïàò÷,øåâðîí\nïàò÷=íàøèâêà,øåâðîí\nøåâðîí=íàøèâêà,ïàò÷",
+            'synonyms_rules' => "Ð½Ð°ÑˆÐ¸Ð²ÐºÐ°=Ð¿Ð°Ñ‚Ñ‡,ÑˆÐµÐ²Ñ€Ð¾Ð½\nÐ¿Ð°Ñ‚Ñ‡=Ð½Ð°ÑˆÐ¸Ð²ÐºÐ°,ÑˆÐµÐ²Ñ€Ð¾Ð½\nÑˆÐµÐ²Ñ€Ð¾Ð½=Ð½Ð°ÑˆÐ¸Ð²ÐºÐ°,Ð¿Ð°Ñ‚Ñ‡",
             'enable_search_logging' => 1,
         );
     }

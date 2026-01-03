@@ -118,7 +118,7 @@ class BeThemeSmartSearch_Search_Variants {
             return array();
         }
 
-        $tokens = BeThemeSmartSearch_Search_Normalize::tokenize($term, $options);
+        $tokens = BeThemeSmartSearch_Search_Normalize::tokenize($term);
         if (empty($tokens)) {
             return array();
         }

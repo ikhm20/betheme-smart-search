@@ -94,123 +94,10 @@ class BeThemeSmartSearch_Search_QueryBuilder {
         $candidate_ids = array_merge($candidate_ids, $this->query_product_ids($query, $max_candidates, $meta_query));
         $candidate_ids = array_values(array_unique($candidate_ids));
 
-        // Stage 2: add a couple of query variants (synonyms/layout) if enabled.
-        if (!$is_code_like && count($variants) > 1 && count($candidate_ids) < $stage_cap) {
-            $extra_variants = array_slice($variants, 1, 2);
-            foreach ($extra_variants as $v) {
-                if (count($candidate_ids) >= $stage_cap) {
-                    break;
-                }
-                $more = $this->query_product_ids($v, $stage_cap - count($candidate_ids), null);
-                if (!empty($more)) {
-                    $candidate_ids = array_values(array_unique(array_merge($candidate_ids, $more)));
-                }
-            }
-        }
-
-        // Stage 3: multi-word widening (order-independent).
-        if (!$is_code_like && count($token_pool) > 1 && count($candidate_ids) < $stage_cap) {
-            $token_budget = (int) floor($stage_cap / max(1, count($token_pool)));
-            $token_budget = max(20, min($stage_cap, $token_budget));
-
-            foreach ($token_pool as $tok) {
-                $more = $this->query_product_ids($tok, $token_budget, null);
-                if (!empty($more)) {
-                    $candidate_ids = array_values(array_unique(array_merge($candidate_ids, $more)));
-                }
-            }
-
-            if (count($candidate_ids) > $stage_cap) {
-                $candidate_ids = array_slice($candidate_ids, 0, $stage_cap);
-            }
-        }
-
-        // Stage 4: taxonomy widening (categories/tags/brands).
-        if (!$is_code_like && !empty($token_pool) && count($candidate_ids) < $stage_cap) {
-            $taxonomies = BeThemeSmartSearch_Search_Taxonomy::get_supported_taxonomies();
-            if (!empty($taxonomies)) {
-                $tax_tokens = array_slice($token_pool, 0, 2);
-                $token_budget = (int) floor($stage_cap / max(1, count($tax_tokens)));
-                $token_budget = max(20, min($stage_cap, $token_budget));
-
-                $min_tax_len = max(3, $min_len);
-                foreach ($tax_tokens as $tok) {
-                    if (BeThemeSmartSearch_Search_Normalize::length($tok) < $min_tax_len) {
-                        continue;
-                    }
-
-                    $terms = get_terms(array(
-                        'taxonomy' => $taxonomies,
-                        'name__like' => $tok,
-                        'number' => 3,
-                        'hide_empty' => true,
-                    ));
-
-                    if (is_wp_error($terms) || empty($terms)) {
-                        continue;
-                    }
-
-                    $tax_query = array('relation' => 'OR');
-                    foreach ($terms as $term) {
-                        if (!isset($term->taxonomy, $term->term_id)) {
-                            continue;
-                        }
-                        $tax_query[] = array(
-                            'taxonomy' => $term->taxonomy,
-                            'field' => 'term_id',
-                            'terms' => (int) $term->term_id,
-                        );
-                    }
-
-                    if (count($tax_query) <= 1) {
-                        continue;
-                    }
-
-                    $remaining_tokens = array_values(array_diff($token_pool, array($tok)));
-                    $remaining_query = '';
-                    if (!empty($remaining_tokens)) {
-                        $remaining_query = implode(' ', $remaining_tokens);
-                    }
-
-                    $more = $this->query_product_ids($remaining_query, $token_budget, null, $tax_query);
-                    if (!empty($more)) {
-                        $candidate_ids = array_values(array_unique(array_merge($candidate_ids, $more)));
-                    }
-
-                    if (count($candidate_ids) >= $stage_cap) {
-                        break;
-                    }
-                }
-
-                if (count($candidate_ids) > $stage_cap) {
-                    $candidate_ids = array_slice($candidate_ids, 0, $stage_cap);
-                }
-            }
-        }
-
-        // Stage 5: fuzzy fallback (prefix-trim) for typos.
-        if (!$is_code_like && empty($candidate_ids) && !empty($options['enable_fuzzy_fallback'])) {
-            $max_dist = isset($options['fuzzy_max_distance']) ? (int) $options['fuzzy_max_distance'] : 2;
-            $fuzzy_tokens = $this->build_fuzzy_tokens($tokens, $max_dist);
-            if (!empty($fuzzy_tokens)) {
-                $token_budget = (int) floor($stage_cap / max(1, count($fuzzy_tokens)));
-                $token_budget = max(20, min($stage_cap, $token_budget));
-
-                foreach ($fuzzy_tokens as $tok) {
-                    $more = $this->query_product_ids($tok, $token_budget, null);
-                    if (!empty($more)) {
-                        $candidate_ids = array_values(array_unique(array_merge($candidate_ids, $more)));
-                    }
-                    if (count($candidate_ids) >= $stage_cap) {
-                        break;
-                    }
-                }
-
-                if (count($candidate_ids) > $stage_cap) {
-                    $candidate_ids = array_slice($candidate_ids, 0, $stage_cap);
-                }
-            }
-        }
+        $candidate_ids = $this->stage_add_variants($candidate_ids, $variants, $stage_cap, $is_code_like);
+        $candidate_ids = $this->stage_widen_tokens($candidate_ids, $token_pool, $stage_cap, $is_code_like);
+        $candidate_ids = $this->stage_widen_taxonomies($candidate_ids, $token_pool, $stage_cap, $is_code_like, $min_len);
+        $candidate_ids = $this->stage_fuzzy_fallback($candidate_ids, $tokens, $stage_cap, $is_code_like, $options);
 
         if (empty($candidate_ids)) {
             return array();
@@ -336,6 +223,167 @@ class BeThemeSmartSearch_Search_QueryBuilder {
         $scoring = new BeThemeSmartSearch_Search_Scoring();
         $ranked = $scoring->rank_products($products, $query, $tokens_lc, $options);
         return array_slice($ranked, 0, $limit);
+    }
+
+    private function merge_candidate_ids($candidate_ids, $more) {
+        $candidate_ids = is_array($candidate_ids) ? $candidate_ids : array();
+        if (!is_array($more) || empty($more)) {
+            return $candidate_ids;
+        }
+        return array_values(array_unique(array_merge($candidate_ids, $more)));
+    }
+
+    private function stage_add_variants($candidate_ids, $variants, $stage_cap, $is_code_like) {
+        if ($is_code_like) {
+            return $candidate_ids;
+        }
+
+        $variants = is_array($variants) ? $variants : array();
+        if (count($variants) <= 1 || count($candidate_ids) >= $stage_cap) {
+            return $candidate_ids;
+        }
+
+        $extra_variants = array_slice($variants, 1, 2);
+        foreach ($extra_variants as $v) {
+            if (count($candidate_ids) >= $stage_cap) {
+                break;
+            }
+            $more = $this->query_product_ids($v, $stage_cap - count($candidate_ids), null);
+            $candidate_ids = $this->merge_candidate_ids($candidate_ids, $more);
+        }
+
+        return $candidate_ids;
+    }
+
+    private function stage_widen_tokens($candidate_ids, $token_pool, $stage_cap, $is_code_like) {
+        if ($is_code_like) {
+            return $candidate_ids;
+        }
+
+        $token_pool = is_array($token_pool) ? $token_pool : array();
+        if (count($token_pool) <= 1 || count($candidate_ids) >= $stage_cap) {
+            return $candidate_ids;
+        }
+
+        $token_budget = (int) floor($stage_cap / max(1, count($token_pool)));
+        $token_budget = max(20, min($stage_cap, $token_budget));
+
+        foreach ($token_pool as $tok) {
+            $more = $this->query_product_ids($tok, $token_budget, null);
+            $candidate_ids = $this->merge_candidate_ids($candidate_ids, $more);
+        }
+
+        if (count($candidate_ids) > $stage_cap) {
+            $candidate_ids = array_slice($candidate_ids, 0, $stage_cap);
+        }
+
+        return $candidate_ids;
+    }
+
+    private function stage_widen_taxonomies($candidate_ids, $token_pool, $stage_cap, $is_code_like, $min_len) {
+        if ($is_code_like) {
+            return $candidate_ids;
+        }
+
+        $token_pool = is_array($token_pool) ? $token_pool : array();
+        if (empty($token_pool) || count($candidate_ids) >= $stage_cap) {
+            return $candidate_ids;
+        }
+
+        $taxonomies = BeThemeSmartSearch_Search_Taxonomy::get_supported_taxonomies();
+        if (empty($taxonomies)) {
+            return $candidate_ids;
+        }
+
+        $tax_tokens = array_slice($token_pool, 0, 2);
+        $token_budget = (int) floor($stage_cap / max(1, count($tax_tokens)));
+        $token_budget = max(20, min($stage_cap, $token_budget));
+
+        $min_tax_len = max(3, (int) $min_len);
+        foreach ($tax_tokens as $tok) {
+            if (BeThemeSmartSearch_Search_Normalize::length($tok) < $min_tax_len) {
+                continue;
+            }
+
+            $terms = get_terms(array(
+                'taxonomy' => $taxonomies,
+                'name__like' => $tok,
+                'number' => 3,
+                'hide_empty' => true,
+            ));
+
+            if (is_wp_error($terms) || empty($terms)) {
+                continue;
+            }
+
+            $tax_query = array('relation' => 'OR');
+            foreach ($terms as $term) {
+                if (!isset($term->taxonomy, $term->term_id)) {
+                    continue;
+                }
+                $tax_query[] = array(
+                    'taxonomy' => $term->taxonomy,
+                    'field' => 'term_id',
+                    'terms' => (int) $term->term_id,
+                );
+            }
+
+            if (count($tax_query) <= 1) {
+                continue;
+            }
+
+            $remaining_tokens = array_values(array_diff($token_pool, array($tok)));
+            $remaining_query = '';
+            if (!empty($remaining_tokens)) {
+                $remaining_query = implode(' ', $remaining_tokens);
+            }
+
+            $more = $this->query_product_ids($remaining_query, $token_budget, null, $tax_query);
+            $candidate_ids = $this->merge_candidate_ids($candidate_ids, $more);
+
+            if (count($candidate_ids) >= $stage_cap) {
+                break;
+            }
+        }
+
+        if (count($candidate_ids) > $stage_cap) {
+            $candidate_ids = array_slice($candidate_ids, 0, $stage_cap);
+        }
+
+        return $candidate_ids;
+    }
+
+    private function stage_fuzzy_fallback($candidate_ids, $tokens, $stage_cap, $is_code_like, $options) {
+        if ($is_code_like) {
+            return $candidate_ids;
+        }
+
+        if (!empty($candidate_ids) || empty($options['enable_fuzzy_fallback'])) {
+            return $candidate_ids;
+        }
+
+        $max_dist = isset($options['fuzzy_max_distance']) ? (int) $options['fuzzy_max_distance'] : 2;
+        $fuzzy_tokens = $this->build_fuzzy_tokens($tokens, $max_dist);
+        if (empty($fuzzy_tokens)) {
+            return $candidate_ids;
+        }
+
+        $token_budget = (int) floor($stage_cap / max(1, count($fuzzy_tokens)));
+        $token_budget = max(20, min($stage_cap, $token_budget));
+
+        foreach ($fuzzy_tokens as $tok) {
+            $more = $this->query_product_ids($tok, $token_budget, null);
+            $candidate_ids = $this->merge_candidate_ids($candidate_ids, $more);
+            if (count($candidate_ids) >= $stage_cap) {
+                break;
+            }
+        }
+
+        if (count($candidate_ids) > $stage_cap) {
+            $candidate_ids = array_slice($candidate_ids, 0, $stage_cap);
+        }
+
+        return $candidate_ids;
     }
 
     private function build_tokens_lc($tokens, $min_len) {

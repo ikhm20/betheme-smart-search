@@ -56,14 +56,26 @@ class BeThemeSmartSearch_Rest_Suggest {
     public function handle_suggest_query($request) {
         $q = (string) $request->get_param('q');
         $q = trim($q);
-        $context = (string) $request->get_param('context');
-        $context = $context !== '' ? $context : 'shop';
+        $context = $this->normalize_context($request->get_param('context'));
+        $limit = $this->clamp_int($request->get_param('limit'), 1, 20);
+        $days = $this->clamp_int($request->get_param('days'), 1, 365);
 
-        $limit = (int) $request->get_param('limit');
-        $limit = max(1, min(20, $limit));
+        $empty_payload = array(
+            'query' => $q,
+            'context' => $context,
+            'popular' => array(),
+            'matches' => array(),
+            'popular_products' => array(),
+        );
 
-        $days = (int) $request->get_param('days');
-        $days = max(1, min(365, $days));
+        if (empty($this->options['live_search_enabled'])) {
+            return rest_ensure_response($empty_payload);
+        }
+
+        // "Show suggestions" is only for non-empty queries; keep popular products for empty state.
+        if ($q !== '' && empty($this->options['live_search_show_suggestions'])) {
+            return rest_ensure_response($empty_payload);
+        }
 
         $use_cache = !empty($this->options['enable_caching']);
         $cache_ttl = 300;
@@ -113,5 +125,18 @@ class BeThemeSmartSearch_Rest_Suggest {
         }
 
         return rest_ensure_response($payload);
+    }
+
+    private function normalize_context($context) {
+        $context = sanitize_text_field($context);
+        $context = is_string($context) ? trim($context) : '';
+        return $context !== '' ? $context : 'shop';
+    }
+
+    private function clamp_int($value, $min, $max) {
+        $value = (int) $value;
+        $min = (int) $min;
+        $max = (int) $max;
+        return max($min, min($max, $value));
     }
 }

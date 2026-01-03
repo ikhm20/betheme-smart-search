@@ -198,8 +198,8 @@ betheme-smart-search/
 |-- templates/
 |   |-- search-results.php      # Custom search results template
 |-- assets/
-|   |-- search.js               # AJAX search functionality
 |   |-- search.css              # Search styling
+|   |-- live-suggest.js         # Live dropdown (REST /live)
 |-- README.md                   # This file
 ```
 
@@ -236,6 +236,10 @@ betheme-smart-search/
 5. Submit a pull request
 
 ## Changelog
+
+### 1.0.2
+- Refactor: codebase refactoring and internal improvements
+- Bumped version to 1.0.2
 
 ### 1.0.0
 - Initial release

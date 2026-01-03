@@ -48,12 +48,38 @@ class BeThemeSmartSearch_Helpers {
             _deprecated_function(__METHOD__, '1.0.1', 'BeThemeSmartSearch_Search_Normalize::is_code_like_query');
         }
 
-        return BeThemeSmartSearch_Search_Normalize::is_code_like_query($query);
+        if (class_exists('BeThemeSmartSearch_Search_Normalize') && method_exists('BeThemeSmartSearch_Search_Normalize', 'is_code_like_query')) {
+            return BeThemeSmartSearch_Search_Normalize::is_code_like_query($query);
+        }
+
+        $q = is_string($query) ? trim($query) : '';
+        if ($q === '') {
+            return false;
+        }
+
+        if (preg_match('/\s/u', $q)) {
+            return false;
+        }
+
+        if (preg_match('/\d/', $q)) {
+            return true;
+        }
+
+        if (preg_match('/[-_]/', $q)) {
+            return true;
+        }
+
+        if (preg_match('/^[A-Za-z]+$/', $q)) {
+            $len = function_exists('mb_strlen') ? mb_strlen($q, 'UTF-8') : strlen($q);
+            if ($len > 4) {
+                return false;
+            }
+            return $q === strtoupper($q);
+        }
+
+        return false;
     }
 
-    /**
-     * @deprecated 1.0.1 Use BeThemeSmartSearch_Support_Options::get_default_product_meta_keys().
-     */
     public static function get_default_product_meta_keys() {
         if (function_exists('_deprecated_function')) {
             _deprecated_function(__METHOD__, '1.0.1', 'BeThemeSmartSearch_Support_Options::get_default_product_meta_keys');
@@ -65,8 +91,8 @@ class BeThemeSmartSearch_Helpers {
      * Product meta keys used for SKU/barcode matching.
      */
     public static function get_product_meta_keys($options = null) {
-        $defaults = BeThemeSmartSearch_Support_Options::get_default_product_meta_keys();
-        $options = is_array($options) ? $options : BeThemeSmartSearch_Support_Options::get();
+        $defaults = self::get_default_product_meta_keys();
+        $options = is_array($options) ? $options : self::get_options();
 
         $keys = isset($options['product_meta_keys']) ? $options['product_meta_keys'] : array();
         if (is_string($keys)) {
@@ -97,7 +123,11 @@ class BeThemeSmartSearch_Helpers {
             _deprecated_function(__METHOD__, '1.0.1', 'BeThemeSmartSearch_Search_Variants::build');
         }
 
-        return BeThemeSmartSearch_Search_Variants::build($term);
+        if (class_exists('BeThemeSmartSearch_Search_Variants') && method_exists('BeThemeSmartSearch_Search_Variants', 'build')) {
+            return BeThemeSmartSearch_Search_Variants::build($term);
+        }
+
+        return array();
     }
 
     /**
@@ -110,7 +140,11 @@ class BeThemeSmartSearch_Helpers {
             _deprecated_function(__METHOD__, '1.0.1', 'BeThemeSmartSearch_Search_Variants::parse_synonyms_rules');
         }
 
-        return BeThemeSmartSearch_Search_Variants::parse_synonyms_rules($raw);
+        if (class_exists('BeThemeSmartSearch_Search_Variants') && method_exists('BeThemeSmartSearch_Search_Variants', 'parse_synonyms_rules')) {
+            return BeThemeSmartSearch_Search_Variants::parse_synonyms_rules($raw);
+        }
+
+        return array();
     }
 
     /**
@@ -234,8 +268,11 @@ class BeThemeSmartSearch_Helpers {
     /**
      * Log search analytics
      */
-    public static function log_search_query($query, $results_count) {
-        $context = self::get_search_context();
+    public static function log_search_query($query, $results_count, $context = null) {
+        $context = is_string($context) ? trim($context) : '';
+        if ($context === '') {
+            $context = self::get_search_context();
+        }
         $user_ip = self::get_user_ip();
         $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
 
@@ -265,9 +302,6 @@ class BeThemeSmartSearch_Helpers {
     /**
      * Centralized access to plugin options with defaults
      */
-    /**
-     * @deprecated 1.0.1 Use BeThemeSmartSearch_Support_Options::get().
-     */
     public static function get_options() {
         if (function_exists('_deprecated_function')) {
             _deprecated_function(__METHOD__, '1.0.1', 'BeThemeSmartSearch_Support_Options::get');
@@ -278,9 +312,6 @@ class BeThemeSmartSearch_Helpers {
     /**
      * Default options shared across plugin components
      */
-    /**
-     * @deprecated 1.0.1 Use BeThemeSmartSearch_Support_Options::get_default_options().
-     */
     public static function get_default_options() {
         if (function_exists('_deprecated_function')) {
             _deprecated_function(__METHOD__, '1.0.1', 'BeThemeSmartSearch_Support_Options::get_default_options');
@@ -290,9 +321,6 @@ class BeThemeSmartSearch_Helpers {
 
     /**
      * Sanitize plugin options payload.
-     */
-    /**
-     * @deprecated 1.0.1 Use BeThemeSmartSearch_Support_Options::sanitize().
      */
     public static function sanitize_options($input) {
         if (function_exists('_deprecated_function')) {

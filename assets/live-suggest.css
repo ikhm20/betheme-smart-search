@@ -10,20 +10,29 @@
 
 .mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-exact ul,
 .mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-products ul,
-.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-suggestions ul {
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-suggestions ul,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-words ul,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-categories ul,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-brands ul {
   margin: 0;
   padding: 0;
 }
 
 .mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-exact .mfn-live-search-heading,
 .mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-products .mfn-live-search-heading,
-.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-suggestions .mfn-live-search-heading {
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-suggestions .mfn-live-search-heading,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-words .mfn-live-search-heading,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-categories .mfn-live-search-heading,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-brands .mfn-live-search-heading {
   opacity: 0.8;
 }
 
 .mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-exact li[data-category="product"] a,
 .mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-products li[data-category="product"] a,
-.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-suggestions li[data-category="suggestion"] a {
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-suggestions li[data-category="suggestion"] a,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-words li[data-category="suggestion"] a,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-categories li[data-category="category"] a,
+.mfn-live-search-box .mfn-live-search-list .mfn-live-search-list-bss-brands li[data-category="brand"] a {
   display: block;
 }
 

@@ -13,22 +13,23 @@ class BeThemeSmartSearch_Support_Analytics {
         return $wpdb->prefix . 'betheme_search_analytics';
     }
 
+    public static function get_presearch_table_name() {
+        global $wpdb;
+        return $wpdb->prefix . 'betheme_search_presearch';
+    }
+
     public static function log_query($query, $results_count, $context, $user_ip, $user_agent) {
         if (!self::table_exists()) {
             return;
         }
 
         $query = sanitize_text_field($query);
-        $context = sanitize_text_field($context);
+        $context = self::normalize_context($context);
         $user_ip = sanitize_text_field($user_ip);
         $user_agent = sanitize_text_field($user_agent);
 
         if ($query === '') {
             return;
-        }
-
-        if ($context === '') {
-            $context = 'shop';
         }
 
         global $wpdb;
@@ -47,9 +48,50 @@ class BeThemeSmartSearch_Support_Analytics {
         );
     }
 
+    public static function log_presearch_event($query, $context, $event, $meta = array()) {
+        if (!self::presearch_table_exists()) {
+            return;
+        }
+
+        $query = sanitize_text_field($query);
+        $context = self::normalize_context($context);
+        $event = sanitize_text_field($event);
+
+        if ($query === '' || $event === '') {
+            return;
+        }
+
+        $meta = is_array($meta) ? $meta : array('value' => $meta);
+        $meta = wp_json_encode($meta);
+        list($user_ip, $user_agent) = self::get_request_meta();
+
+        global $wpdb;
+        $table = self::get_presearch_table_name();
+
+        $wpdb->insert(
+            $table,
+            array(
+                'query' => $query,
+                'context' => $context,
+                'event' => $event,
+                'meta' => is_string($meta) ? $meta : '',
+                'user_ip' => $user_ip,
+                'user_agent' => $user_agent,
+            ),
+            array('%s', '%s', '%s', '%s', '%s', '%s')
+        );
+    }
+
     public static function table_exists() {
         global $wpdb;
         $table = self::get_table_name();
+        $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table));
+        return $exists === $table;
+    }
+
+    public static function presearch_table_exists() {
+        global $wpdb;
+        $table = self::get_presearch_table_name();
         $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table));
         return $exists === $table;
     }
@@ -330,5 +372,26 @@ class BeThemeSmartSearch_Support_Analytics {
         );
 
         return is_array($rows) ? $rows : array();
+    }
+
+    private static function normalize_context($context) {
+        $context = sanitize_text_field($context);
+        $context = is_string($context) ? trim($context) : '';
+        return $context !== '' ? $context : 'shop';
+    }
+
+    private static function get_request_meta() {
+        $user_ip = '';
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+            $user_ip = $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $user_ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
+            $user_ip = $_SERVER['REMOTE_ADDR'];
+        }
+        $user_ip = sanitize_text_field($user_ip);
+
+        $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field($_SERVER['HTTP_USER_AGENT']) : '';
+        return array($user_ip, $user_agent);
     }
 }
