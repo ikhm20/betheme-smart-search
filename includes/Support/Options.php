@@ -304,6 +304,45 @@ iphon=iphone,айфон,iphone
         return $map;
     }
 
+    /**
+     * Merge missing rules from the default synonyms into the saved rules without overwriting user changes.
+     * Returns the merged raw rules string.
+     */
+    public static function merge_missing_synonyms_rules($saved_raw, $default_raw) {
+        $saved_raw = is_string($saved_raw) ? trim($saved_raw) : '';
+        $default_raw = is_string($default_raw) ? trim($default_raw) : '';
+
+        if ($default_raw === '') {
+            return $saved_raw;
+        }
+
+        if ($saved_raw === '') {
+            return $default_raw;
+        }
+
+        // Parse both into maps (normalized keys)
+        if (class_exists('BeThemeSmartSearch_Search_Variants') && method_exists('BeThemeSmartSearch_Search_Variants', 'parse_synonyms_rules')) {
+            $saved_map = BeThemeSmartSearch_Search_Variants::parse_synonyms_rules($saved_raw);
+            $default_map = BeThemeSmartSearch_Search_Variants::parse_synonyms_rules($default_raw);
+        } else {
+            $saved_map = array();
+            $default_map = array();
+        }
+
+        $missing = array_diff_key($default_map, $saved_map);
+        if (empty($missing)) {
+            return $saved_raw;
+        }
+
+        $lines = array();
+        foreach ($missing as $k => $variants) {
+            $v = implode(',', $variants);
+            $lines[] = $k . '=' . $v;
+        }
+
+        return rtrim($saved_raw) . "\n\n" . implode("\n", $lines);
+    }
+
 
     /**
 

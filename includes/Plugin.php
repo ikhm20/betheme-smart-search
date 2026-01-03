@@ -28,8 +28,46 @@ class BeThemeSmartSearch {
         new BeThemeSmartSearch_Admin($this->get_plugin_name(), $this->get_version());
         new BeThemeSmartSearch_Updater(BETHEME_SMART_SEARCH_FILE);
 
+        // Perform lightweight, non-destructive migration of options (merge missing defaults only).
+        $this->maybe_migrate_options();
+
         // Enqueue assets only for search results page
         add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));
+    }
+
+    /**
+     * Merge missing defaults into the saved options without clobbering admin customizations.
+     */
+    private function maybe_migrate_options() {
+        $opt_name = BETHEME_SMART_SEARCH_OPTION_NAME;
+        $saved = get_option($opt_name, array());
+        $saved = is_array($saved) ? $saved : array();
+
+        $defaults = BeThemeSmartSearch_Support_Options::get_default_options();
+        $changed = false;
+
+        // Safe: only set new keys if they are not present in saved options
+        $keys_to_ensure = array('enable_fuzzy_fallback', 'fuzzy_max_distance', 'live_search_show_suggestions');
+        foreach ($keys_to_ensure as $k) {
+            if (!isset($saved[$k]) && isset($defaults[$k])) {
+                $saved[$k] = $defaults[$k];
+                $changed = true;
+            }
+        }
+
+        // Merge missing synonyms rules (append missing canonical entries only)
+        $saved_raw = isset($saved['synonyms_rules']) ? (string) $saved['synonyms_rules'] : '';
+        $default_raw = isset($defaults['synonyms_rules']) ? (string) $defaults['synonyms_rules'] : '';
+        $merged_raw = BeThemeSmartSearch_Support_Options::merge_missing_synonyms_rules($saved_raw, $default_raw);
+        if ($merged_raw !== $saved_raw) {
+            $saved['synonyms_rules'] = $merged_raw;
+            $changed = true;
+        }
+
+        if ($changed) {
+            update_option($opt_name, $saved);
+        }
+    }
     }
 
     public function get_plugin_name() {
