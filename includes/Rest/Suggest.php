@@ -119,6 +119,12 @@ class BeThemeSmartSearch_Rest_Suggest {
                 $opts['require_full_coverage'] = !empty($this->options['live_search_require_all_tokens']) ? 1 : 0;
                 try {
                     $fb_products = $this->query_builder->search_products_v2($q, $limit, $opts);
+
+                    // Diagnostic: log when fallback returns empty while strict coverage is required
+                    if (empty($fb_products) && !empty($opts['require_full_coverage'])) {
+                        error_log(sprintf('BeTheme Smart Search: suggest fallback empty with require_full_coverage=1; query="%s" limit=%d', substr($q, 0, 200), $limit));
+                    }
+
                     foreach ($fb_products as $p) {
                         if (!empty($p['title'])) {
                             $matches[] = (string) $p['title'];

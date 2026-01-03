@@ -142,6 +142,19 @@ class BeThemeSmartSearch_Rest_LiveSearch {
                 $opts['require_full_coverage'] = !empty($this->options['live_search_require_all_tokens']) ? 1 : 0;
 
                 $payload['products'] = $this->query_builder->search_products_v2($variants[0], $limit, $opts);
+
+                // Diagnostic: if require_full_coverage is set and no products returned, log details for debugging
+                if (empty($payload['products']) && !empty($opts['require_full_coverage'])) {
+                    $diag = sprintf(
+                        'BeTheme Smart Search: live empty result with require_full_coverage=1; query="%s" variants="%s" context="%s" limit=%d',
+                        substr($variants[0], 0, 200),
+                        is_array($variants) ? implode(',', array_slice($variants, 0, 5)) : (string) $variants[0],
+                        $context,
+                        $limit
+                    );
+                    error_log($diag);
+                }
+
                 if (!empty($this->options['live_search_show_categories'])) {
                     $payload['categories'] = $this->query_builder->search_categories($variants[0], min(10, $limit));
                 }
