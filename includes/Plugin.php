@@ -46,16 +46,8 @@ class BeThemeSmartSearch {
         $defaults = BeThemeSmartSearch_Support_Options::get_default_options();
         $changed = false;
 
-        // Safe: only set new keys if they are not present in saved options
-        $keys_to_ensure = array('enable_fuzzy_fallback', 'fuzzy_max_distance', 'live_search_show_suggestions');
-        foreach ($keys_to_ensure as $k) {
-            if (!isset($saved[$k]) && isset($defaults[$k])) {
-                $saved[$k] = $defaults[$k];
-                $changed = true;
-            }
-        }
-
-        // Merge missing synonyms rules (append missing canonical entries only)
+        // Merge missing synonyms rules (append missing canonical entries only).
+        // Important: do NOT auto-enable behavioral toggles (like showing suggestions) for existing installs.
         $saved_raw = isset($saved['synonyms_rules']) ? (string) $saved['synonyms_rules'] : '';
         $default_raw = isset($defaults['synonyms_rules']) ? (string) $defaults['synonyms_rules'] : '';
         $merged_raw = BeThemeSmartSearch_Support_Options::merge_missing_synonyms_rules($saved_raw, $default_raw);
@@ -158,23 +150,28 @@ class BeThemeSmartSearch {
             );
 
             $ctx = BeThemeSmartSearch_Helpers::get_search_context();
+
+            // Use sanitized options for script localization to ensure booleans/numbers
+            // are properly typed and consistent with admin UI.
+            $script_options = BeThemeSmartSearch_Support_Options::sanitize($options);
+
             wp_localize_script('betheme-smart-search-live-suggest', 'bethemeSmartSearchLiveSuggest', array(
                 'suggest_url' => rest_url('betheme-smart-search/v1/suggest'),
                 'live_url' => rest_url('betheme-smart-search/v1/live'),
                 'presearch_url' => rest_url('betheme-smart-search/v1/presearch'),
                 'presearch_selection_url' => rest_url('betheme-smart-search/v1/presearch-selection'),
                 'presearch_log_url' => rest_url('betheme-smart-search/v1/presearch-log'),
-                'enable_presearch_logging' => !empty($options['enable_search_logging']),
-                'debounce_desktop_ms' => !empty($options['live_search_debounce']) ? (int) $options['live_search_debounce'] : 250,
-                'debounce_ms' => !empty($options['live_search_debounce']) ? (int) $options['live_search_debounce'] : 250,
-                'debounce_mobile_ms' => !empty($options['live_search_debounce']) ? max(400, (int) $options['live_search_debounce']) : 500,
+                'enable_presearch_logging' => !empty($script_options['enable_search_logging']),
+                'debounce_desktop_ms' => !empty($script_options['live_search_debounce']) ? (int) $script_options['live_search_debounce'] : 250,
+                'debounce_ms' => !empty($script_options['live_search_debounce']) ? (int) $script_options['live_search_debounce'] : 250,
+                'debounce_mobile_ms' => !empty($script_options['live_search_debounce']) ? max(400, (int) $script_options['live_search_debounce']) : 500,
                 'min_chars' => 2,
                 'max_items' => 6,
-                'max_products' => !empty($options['live_search_max_results']) ? (int) $options['live_search_max_results'] : 5,
+                'max_products' => !empty($script_options['live_search_max_results']) ? (int) $script_options['live_search_max_results'] : 5,
                 'context' => $ctx === 'shop' ? 'shop' : 'blog',
                 'storage_key' => 'bss_search_history_v1',
-                'show_code_products' => !empty($options['live_search_show_code_products']),
-                'show_suggestions' => !empty($options['live_search_show_suggestions']),
+                'show_code_products' => !empty($script_options['live_search_show_code_products']),
+                'show_suggestions' => !empty($script_options['live_search_show_suggestions']),
                 'strings' => array(
                     'heading_suggestions' => __("Похожие запросы", 'betheme-smart-search'),
                     'heading_history' => __("История поиска", 'betheme-smart-search'),

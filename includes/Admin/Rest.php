@@ -94,7 +94,10 @@ class BeThemeSmartSearch_Admin_REST {
     }
 
     public function get_settings() {
-        $options = BeThemeSmartSearch_Support_Options::get();
+        // Return canonical/sanitized options to the admin UI to avoid
+        // type mismatches and false "unsaved changes" indicators.
+        $raw_options = BeThemeSmartSearch_Support_Options::get();
+        $options = BeThemeSmartSearch_Support_Options::sanitize($raw_options);
 
         $pages = get_pages(array(
             'sort_column' => 'post_title',
