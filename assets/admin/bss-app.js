@@ -51,6 +51,7 @@
 
   var startsWith = utils.startsWith;
   var safeJson = utils.safeJson;
+  var safeJsonStable = typeof utils.safeJsonStable === "function" ? utils.safeJsonStable : utils.safeJson;
   var copyToClipboard = utils.copyToClipboard;
   var makeNavAbbr = utils.makeNavAbbr;
   var storageGet = utils.storageGet;
@@ -99,7 +100,7 @@ function App() {
 
     var isDirty = useMemo(function () {
       if (!options) return false;
-      return safeJson(options) !== savedSnapshotRef.current;
+      return safeJsonStable(options) !== savedSnapshotRef.current;
     }, [options]);
 
     var useBeforeUnload = typeof events.useBeforeUnload === "function" ? events.useBeforeUnload : function () {};
@@ -327,7 +328,7 @@ function App() {
         .then(function (res) {
           setData(res);
           setOptions(res.options || {});
-          savedSnapshotRef.current = safeJson(res.options || {});
+          savedSnapshotRef.current = safeJsonStable(res.options || {});
         })
         .catch(function (err) {
           if (isAbortError(err)) return;
@@ -371,7 +372,7 @@ function App() {
         .then(function (res) {
           var next = (res && res.options) || options;
           setOptions(next);
-          savedSnapshotRef.current = safeJson(next);
+          savedSnapshotRef.current = safeJsonStable(next);
           pushToast("success", "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u044b.", { ttl: 4000 });
         })
         .catch(function (err) {
@@ -392,7 +393,7 @@ function App() {
         .then(function (res) {
           var next = (res && res.options) || {};
           setOptions(next);
-          savedSnapshotRef.current = safeJson(next);
+          savedSnapshotRef.current = safeJsonStable(next);
           pushToast("success", "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u0441\u0431\u0440\u043e\u0448\u0435\u043d\u044b.", { ttl: 4000 });
         })
         .catch(function (err) {

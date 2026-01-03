@@ -43,6 +43,36 @@
   };
 
   /**
+   * Stable JSON stringify (sorts object keys recursively) to avoid false positives
+   * when comparing snapshots of options whose key order may vary.
+   * @param {*} value
+   * @returns {string}
+   */
+  utils.safeJsonStable = function (value) {
+    function sortValue(v, seen) {
+      if (!v || typeof v !== "object") return v;
+      if (seen.has(v)) return "[Circular]";
+      seen.add(v);
+      if (Array.isArray(v)) {
+        return v.map(function (x) { return sortValue(x, seen); });
+      }
+      var keys = Object.keys(v).sort();
+      var out = {};
+      keys.forEach(function (k) {
+        out[k] = sortValue(v[k], seen);
+      });
+      return out;
+    }
+
+    try {
+      var seen = typeof WeakSet === "function" ? new WeakSet() : new Set();
+      return JSON.stringify(sortValue(value || {}, seen));
+    } catch (e) {
+      return utils.safeJson(value);
+    }
+  };
+
+  /**
    * Copy text to clipboard with fallback.
    * @param {string} text
    * @returns {Promise<boolean>}

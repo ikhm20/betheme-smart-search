@@ -245,6 +245,14 @@
               onChange: function (v) {
                 updateOption("live_search_show_suggestions", v ? 1 : 0);
               },
+            }),
+            el(CheckboxControl, {
+              label: "Требовать совпадения всех слов в выпадашке",
+              help: "Если включено — в выпадающем live‑поиске будут показываться только товары, совпадающие со всеми словами запроса.",
+              checked: !!options.live_search_require_all_tokens,
+              onChange: function (v) {
+                updateOption("live_search_require_all_tokens", v ? 1 : 0);
+              },
             })
           ),
           el(PanelBody, { title: "\u041a\u0435\u0448\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 (\u0443\u0441\u043a\u043e\u0440\u0435\u043d\u0438\u0435)", initialOpen: false },
