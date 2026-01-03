@@ -117,12 +117,24 @@ class BeThemeSmartSearch_Rest_Suggest {
                 // For suggest fallback, honor the live-search strict coverage option without changing global options.
                 $opts = $this->options;
                 $opts['require_full_coverage'] = !empty($this->options['live_search_require_all_tokens']) ? 1 : 0;
-                try {
-                    $fb_products = $this->query_builder->search_products_v2($q, $limit, $opts);
 
-                    // Diagnostic: log when fallback returns empty while strict coverage is required
+                // Prefer the first variants term for more focused title matches (like live-search does).
+                $variants = BeThemeSmartSearch_Search_Variants::build($q, $this->options);
+                $search_term = (!empty($variants) && is_array($variants)) ? $variants[0] : $q;
+
+                try {
+                    $fb_products = $this->query_builder->search_products_v2($search_term, $limit, $opts);
+
+                    // If strict coverage yielded nothing, retry with relaxed coverage as a soft fallback.
                     if (empty($fb_products) && !empty($opts['require_full_coverage'])) {
-                        error_log(sprintf('BeTheme Smart Search: suggest fallback empty with require_full_coverage=1; query="%s" limit=%d', substr($q, 0, 200), $limit));
+                        error_log(sprintf('BeTheme Smart Search: suggest fallback empty with require_full_coverage=1; retrying relaxed search for query="%s"', substr($q, 0, 200)));
+                        $opts_relaxed = $opts;
+                        $opts_relaxed['require_full_coverage'] = 0;
+                        $fb_products = $this->query_builder->search_products_v2($search_term, $limit + 2, $opts_relaxed);
+
+                        if (!empty($fb_products)) {
+                            error_log(sprintf('BeTheme Smart Search: suggest fallback returned %d products after relaxing coverage for query="%s"', count($fb_products), substr($q, 0, 200)));
+                        }
                     }
 
                     foreach ($fb_products as $p) {
