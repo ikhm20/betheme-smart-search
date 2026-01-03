@@ -221,12 +221,25 @@ class BeThemeSmartSearch_Search_QueryBuilder {
 
             // If live search requests strict coverage, enforce it regardless of global search_mode.
             if (!empty($options['require_full_coverage']) && $token_total > 1) {
+                $pre_strict_products = $products;
+
                 $products = array_values(array_filter($products, function ($product) use ($token_total) {
                     return isset($product['token_hits']) && (int) $product['token_hits'] === $token_total;
                 }));
 
                 if (empty($products)) {
-                    return array();
+                    // Log this to help debugging queries that become too restrictive.
+                    error_log(sprintf('BeTheme Smart Search: strict coverage removed all products; relaxing for query="%s" tokens="%s"', substr($query, 0, 200), implode(',', $coverage_tokens)));
+
+                    // Fallback: allow partial matches — keep products with at least one token hit.
+                    $products = array_values(array_filter($pre_strict_products, function ($product) {
+                        return isset($product['token_hits']) && (int) $product['token_hits'] > 0;
+                    }));
+
+                    // If still empty, give up and return no results.
+                    if (empty($products)) {
+                        return array();
+                    }
                 }
             }
         }
