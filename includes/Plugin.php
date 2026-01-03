@@ -68,7 +68,6 @@ class BeThemeSmartSearch {
             update_option($opt_name, $saved);
         }
     }
-    }
 
     public function get_plugin_name() {
         return 'betheme-smart-search';
