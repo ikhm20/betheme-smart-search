@@ -92,53 +92,93 @@ class BeThemeSmartSearch_Rest_Suggest {
             }
         }
 
-        $popular = array();
-        $matches = array();
-        $popular_products = array();
+        try {
+            $popular = array();
+            $matches = array();
+            $popular_products = array();
 
-        if ($this->history) {
-            if ($q !== '' && BeThemeSmartSearch_Search_Normalize::length($q) >= 2) {
-                $matches = $this->history->get_prefix_matches($q, $context, $days, min(30, $limit * 4));
-            } else {
-                $popular = $this->history->get_popular_queries($context, $days, min(50, $limit * 6));
-            }
-        }
-
-        // Popular products (only needed for empty query UI).
-        if ($q === '' && $context === 'shop' && BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
-            if ($this->query_builder) {
-                $popular_products = $this->query_builder->get_popular_products($limit, $this->options);
-            }
-        }
-
-        // Fallback: if no history matches found for non-empty query, return product title matches
-        if ($q !== '' && empty($matches) && $this->query_builder) {
-            $fb_products = $this->query_builder->search_products_v2($q, $limit, $this->options);
-            foreach ($fb_products as $p) {
-                if (!empty($p['title'])) {
-                    $matches[] = (string) $p['title'];
+            if ($this->history) {
+                if ($q !== '' && BeThemeSmartSearch_Search_Normalize::length($q) >= 2) {
+                    $matches = $this->history->get_prefix_matches($q, $context, $days, min(30, $limit * 4));
+                } else {
+                    $popular = $this->history->get_popular_queries($context, $days, min(50, $limit * 6));
                 }
             }
-            $matches = array_values(array_unique(array_filter($matches)));
+
+            // Popular products (only needed for empty query UI).
+            if ($q === '' && $context === 'shop' && BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
+                if ($this->query_builder) {
+                    $popular_products = $this->query_builder->get_popular_products($limit, $this->options);
+                }
+            }
+
+            // Fallback: if no history matches found for non-empty query, return product title matches
+            if ($q !== '' && empty($matches) && $this->query_builder) {
+                // For suggest fallback, honor the live-search strict coverage option without changing global options.
+                $opts = $this->options;
+                $opts['require_full_coverage'] = !empty($this->options['live_search_require_all_tokens']) ? 1 : 0;
+                try {
+                    $fb_products = $this->query_builder->search_products_v2($q, $limit, $opts);
+                    foreach ($fb_products as $p) {
+                        if (!empty($p['title'])) {
+                            $matches[] = (string) $p['title'];
+                        }
+                    }
+                    $matches = array_values(array_unique(array_filter($matches)));
+                } catch (Throwable $e) {
+                    // Silently ignore search errors for suggest endpoint; return empty matches.
+                    error_log('BeTheme Smart Search: suggest fallback error: ' . $e->getMessage());
+                    if (method_exists($e, 'getTraceAsString')) {
+                        error_log($e->getTraceAsString());
+                    }
+                }
+            }
+
+            $payload = array(
+                'query' => $q,
+                'context' => $context,
+                // Popular queries: returned as a fallback, but the UI may prefer popular_products.
+                'popular' => array_slice($popular, 0, $limit),
+                'matches' => array_slice($matches, 0, $limit),
+                'popular_products' => array_slice($popular_products, 0, $limit),
+                'meta' => array(
+                    'require_full_coverage' => !empty($this->options['live_search_require_all_tokens']) ? 1 : 0,
+                ),
+            );
+
+            if ($use_cache && $cache_ttl > 0) {
+                BeThemeSmartSearch_Support_Cache::set($cache_key, $payload, $cache_ttl);
+            }
+
+            return rest_ensure_response($payload);
+        } catch (Throwable $e) {
+            $msg = sprintf(
+                'BeTheme Smart Search: suggest error: %s in %s:%d; query="%s" context="%s"',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine(),
+                substr($q, 0, 200),
+                $context
+            );
+            if (method_exists($e, 'getTraceAsString')) {
+                $msg .= '\n' . $e->getTraceAsString();
+            }
+            error_log($msg);
+
+            $payload = array(
+                'query' => $q,
+                'context' => $context,
+                'popular' => array(),
+                'matches' => array(),
+                'popular_products' => array(),
+                'meta' => array(
+                    'require_full_coverage' => !empty($this->options['live_search_require_all_tokens']) ? 1 : 0,
+                ),
+                'timings_ms' => array('error' => 1),
+            );
+
+            return rest_ensure_response($payload);
         }
-
-        $payload = array(
-            'query' => $q,
-            'context' => $context,
-            // Popular queries: returned as a fallback, but the UI may prefer popular_products.
-            'popular' => array_slice($popular, 0, $limit),
-            'matches' => array_slice($matches, 0, $limit),
-            'popular_products' => array_slice($popular_products, 0, $limit),
-            'meta' => array(
-                'require_full_coverage' => !empty($this->options['live_search_require_all_tokens']) ? 1 : 0,
-            ),
-        );
-
-        if ($use_cache && $cache_ttl > 0) {
-            BeThemeSmartSearch_Support_Cache::set($cache_key, $payload, $cache_ttl);
-        }
-
-        return rest_ensure_response($payload);
     }
 
     private function normalize_context($context) {

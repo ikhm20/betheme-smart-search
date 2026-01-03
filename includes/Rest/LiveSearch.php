@@ -103,61 +103,84 @@ class BeThemeSmartSearch_Rest_LiveSearch {
             ),
         );
 
-        $payload['exact_product'] = $this->query_builder->find_exact_product($variants, $this->options);
-        $tExact = microtime(true);
+        try {
+            $payload['exact_product'] = $this->query_builder->find_exact_product($variants, $this->options);
+            $tExact = microtime(true);
 
-        if ($stage === 'exact') {
-            $payload['timings_ms'] = array(
-                'exact' => (int) round(($tExact - $t0) * 1000),
-                'total' => (int) round((microtime(true) - $t0) * 1000),
-            );
-            return rest_ensure_response($payload);
-        }
-
-        $use_cache = !empty($this->options['enable_caching']);
-        $cache_ttl = 30;
-        if (!empty($this->options['cache_ttl'])) {
-            $cache_ttl = (int) $this->options['cache_ttl'];
-        }
-        $cache_ttl = BeThemeSmartSearch_Support_Cache::clamp_ttl($cache_ttl, 10, 120);
-
-        $cache_key = 'betheme_search_live_' . md5($variants[0] . '|' . $context . '|' . $limit . '|v1');
-        if ($use_cache) {
-            $cached = BeThemeSmartSearch_Support_Cache::get($cache_key);
-            if ($cached !== false && is_array($cached)) {
-                $cached['exact_product'] = $payload['exact_product'];
-                $cached['timings_ms'] = array(
+            if ($stage === 'exact') {
+                $payload['timings_ms'] = array(
                     'exact' => (int) round(($tExact - $t0) * 1000),
-                    'cached' => 1,
                     'total' => (int) round((microtime(true) - $t0) * 1000),
                 );
-                return rest_ensure_response($cached);
+                return rest_ensure_response($payload);
             }
-        }
 
-        if ($context === 'shop' && BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
-            // Allow the live-search to request stricter coverage behavior without changing global search behavior.
-            $opts = $this->options;
-            $opts['require_full_coverage'] = !empty($this->options['live_search_require_all_tokens']) ? 1 : 0;
-
-            $payload['products'] = $this->query_builder->search_products_v2($variants[0], $limit, $opts);
-            if (!empty($this->options['live_search_show_categories'])) {
-                $payload['categories'] = $this->query_builder->search_categories($variants[0], min(10, $limit));
+            $use_cache = !empty($this->options['enable_caching']);
+            $cache_ttl = 30;
+            if (!empty($this->options['cache_ttl'])) {
+                $cache_ttl = (int) $this->options['cache_ttl'];
             }
+            $cache_ttl = BeThemeSmartSearch_Support_Cache::clamp_ttl($cache_ttl, 10, 120);
+
+            $cache_key = 'betheme_search_live_' . md5($variants[0] . '|' . $context . '|' . $limit . '|v1');
+            if ($use_cache) {
+                $cached = BeThemeSmartSearch_Support_Cache::get($cache_key);
+                if ($cached !== false && is_array($cached)) {
+                    $cached['exact_product'] = $payload['exact_product'];
+                    $cached['timings_ms'] = array(
+                        'exact' => (int) round(($tExact - $t0) * 1000),
+                        'cached' => 1,
+                        'total' => (int) round((microtime(true) - $t0) * 1000),
+                    );
+                    return rest_ensure_response($cached);
+                }
+            }
+
+            if ($context === 'shop' && BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
+                // Allow the live-search to request stricter coverage behavior without changing global search behavior.
+                $opts = $this->options;
+                $opts['require_full_coverage'] = !empty($this->options['live_search_require_all_tokens']) ? 1 : 0;
+
+                $payload['products'] = $this->query_builder->search_products_v2($variants[0], $limit, $opts);
+                if (!empty($this->options['live_search_show_categories'])) {
+                    $payload['categories'] = $this->query_builder->search_categories($variants[0], min(10, $limit));
+                }
+            }
+
+            $tFull = microtime(true);
+            $payload['timings_ms'] = array(
+                'exact' => (int) round(($tExact - $t0) * 1000),
+                'full' => (int) round(($tFull - $tExact) * 1000),
+                'total' => (int) round((microtime(true) - $t0) * 1000),
+            );
+
+            if ($use_cache && $cache_ttl > 0) {
+                BeThemeSmartSearch_Support_Cache::set($cache_key, $payload, $cache_ttl);
+            }
+
+            return rest_ensure_response($payload);
+        } catch (Throwable $e) {
+            // Log details for debugging without exposing internals to the public response
+            $msg = sprintf(
+                'BeTheme Smart Search: live error: %s in %s:%d; query="%s" context="%s" stage="%s"',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine(),
+                substr($query, 0, 200),
+                $context,
+                $stage
+            );
+            if (method_exists($e, 'getTraceAsString')) {
+                $msg .= '\n' . $e->getTraceAsString();
+            }
+            error_log($msg);
+
+            // Return graceful empty payload (do not leak exception details publicly)
+            $payload['products'] = array();
+            $payload['categories'] = array();
+            $payload['timings_ms'] = array('error' => 1, 'total' => (int) round((microtime(true) - $t0) * 1000));
+            return rest_ensure_response($payload);
         }
-
-        $tFull = microtime(true);
-        $payload['timings_ms'] = array(
-            'exact' => (int) round(($tExact - $t0) * 1000),
-            'full' => (int) round(($tFull - $tExact) * 1000),
-            'total' => (int) round((microtime(true) - $t0) * 1000),
-        );
-
-        if ($use_cache && $cache_ttl > 0) {
-            BeThemeSmartSearch_Support_Cache::set($cache_key, $payload, $cache_ttl);
-        }
-
-        return rest_ensure_response($payload);
     }
 
     private function normalize_context($context) {
