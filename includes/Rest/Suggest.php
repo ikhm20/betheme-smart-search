@@ -97,6 +97,15 @@ class BeThemeSmartSearch_Rest_Suggest {
             $matches = array();
             $popular_products = array();
 
+            // Temporary debug counters for suggest fallback diagnostics
+            $debug_info = array(
+                'history_matches_count' => 0,
+                'fb_search_term' => '',
+                'fb_variants_strict' => null,
+                'fb_variants_relaxed' => null,
+                'fb_full_relaxed' => null,
+            );
+
             if ($this->history) {
                 if ($q !== '' && BeThemeSmartSearch_Search_Normalize::length($q) >= 2) {
                     $matches = $this->history->get_prefix_matches($q, $context, $days, min(30, $limit * 4));
@@ -104,6 +113,9 @@ class BeThemeSmartSearch_Rest_Suggest {
                     $popular = $this->history->get_popular_queries($context, $days, min(50, $limit * 6));
                 }
             }
+
+            // Record counts after history lookup
+            $debug_info['history_matches_count'] = is_array($matches) ? count($matches) : 0;
 
             // Popular products (only needed for empty query UI).
             if ($q === '' && $context === 'shop' && BeThemeSmartSearch_Helpers::is_woocommerce_active()) {
@@ -121,9 +133,11 @@ class BeThemeSmartSearch_Rest_Suggest {
                 // Prefer the first variants term for more focused title matches (like live-search does).
                 $variants = BeThemeSmartSearch_Search_Variants::build($q, $this->options);
                 $search_term = (!empty($variants) && is_array($variants)) ? $variants[0] : $q;
+                $debug_info['fb_search_term'] = (string) $search_term;
 
                 try {
                     $fb_products = $this->query_builder->search_products_v2($search_term, $limit, $opts);
+                    $debug_info['fb_variants_strict'] = is_array($fb_products) ? count($fb_products) : 0;
 
                     // If strict coverage yielded nothing, retry with relaxed coverage as a soft fallback.
                     if (empty($fb_products) && !empty($opts['require_full_coverage'])) {
@@ -131,6 +145,7 @@ class BeThemeSmartSearch_Rest_Suggest {
                         $opts_relaxed = $opts;
                         $opts_relaxed['require_full_coverage'] = 0;
                         $fb_products = $this->query_builder->search_products_v2($search_term, $limit + 2, $opts_relaxed);
+                        $debug_info['fb_variants_relaxed'] = is_array($fb_products) ? count($fb_products) : 0;
 
                         if (!empty($fb_products)) {
                             error_log(sprintf('BeTheme Smart Search: suggest fallback returned %d products after relaxing coverage for query="%s"', count($fb_products), substr($q, 0, 200)));
@@ -138,6 +153,7 @@ class BeThemeSmartSearch_Rest_Suggest {
                             // If relaxed search for variants[0] still yields nothing, try a relaxed search using the full original query.
                             error_log(sprintf('BeTheme Smart Search: suggest relaxed search for variants[0] returned 0; retrying relaxed search with full query for "%s"', substr($q, 0, 200)));
                             $fb_products = $this->query_builder->search_products_v2($q, $limit + 4, $opts_relaxed);
+                            $debug_info['fb_full_relaxed'] = is_array($fb_products) ? count($fb_products) : 0;
                             if (!empty($fb_products)) {
                                 error_log(sprintf('BeTheme Smart Search: suggest fallback returned %d products after relaxing coverage for full query="%s"', count($fb_products), substr($q, 0, 200)));
                             } else {
@@ -171,6 +187,8 @@ class BeThemeSmartSearch_Rest_Suggest {
                 'meta' => array(
                     'require_full_coverage' => !empty($this->options['live_search_require_all_tokens']) ? 1 : 0,
                 ),
+                // Temporary debug info for diagnosing suggest fallback behavior (remove in production)
+                'debug' => $debug_info,
             );
 
             if ($use_cache && $cache_ttl > 0) {
