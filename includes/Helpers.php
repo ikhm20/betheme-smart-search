@@ -91,7 +91,7 @@ class BeThemeSmartSearch_Helpers {
      * Product meta keys used for SKU/barcode matching.
      */
     public static function get_product_meta_keys($options = null) {
-        $defaults = self::get_default_product_meta_keys();
+        $defaults = BeThemeSmartSearch_Support_Options::get_default_product_meta_keys();
         $options = is_array($options) ? $options : self::get_options();
 
         $keys = isset($options['product_meta_keys']) ? $options['product_meta_keys'] : array();
