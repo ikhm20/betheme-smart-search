@@ -111,6 +111,17 @@ class BeThemeSmartSearch_Rest_Suggest {
             }
         }
 
+        // Fallback: if no history matches found for non-empty query, return product title matches
+        if ($q !== '' && empty($matches) && $this->query_builder) {
+            $fb_products = $this->query_builder->search_products_v2($q, $limit, $this->options);
+            foreach ($fb_products as $p) {
+                if (!empty($p['title'])) {
+                    $matches[] = (string) $p['title'];
+                }
+            }
+            $matches = array_values(array_unique(array_filter($matches)));
+        }
+
         $payload = array(
             'query' => $q,
             'context' => $context,
