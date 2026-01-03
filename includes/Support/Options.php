@@ -208,7 +208,65 @@ class BeThemeSmartSearch_Support_Options {
 
             'enable_synonyms' => 1,
 
-            'synonyms_rules' => "нашивка=значок,патч\nзначок=нашивка,патч\nпатч=нашивка,значок\nшеврон=нашивка,патч\nчехол=корпус\nкорпус=чехол\nбрелок=ключ\nключ=брелок\niphon=iphone,айфон",
+            'synonyms_rules' => "# Нашивки / Аппликации
+нашивка=нашивка,нашивки,термоаппликация,патч,термопечать,термо-патч,термоаппликац
+нашивкӓ=нашивка
+нашифка=нашивка
+нашивко=нашивка
+нащивка=нашивка
+термоапликция=термоаппликация
+термопатчь=термо-патч
+
+# Стикеры / Наклейки
+стикер=стикер,стикеры,наклейка,наклейки,decal,stickеr
+сткеры=стикер
+стекиры=стикер
+наклйка=наклейка
+наклейкы=наклейки
+
+# Брелоки / Подвески / Печати
+брелок=брелок,брелоки,брэлок,брелочек,брелочки,keychain
+бриолок=брелок
+брелко=брелок
+брелкои=брелоки
+брелокк=брелок
+брэлак=брелок
+
+# Чехлы / Кейсы
+чехол=чехол,чехлы,чехол для ключа,чехол для брелока,case,cover,key cover,key fob cover
+чекол=чехол
+чехыл=чехлы
+чехол для брелкоа=чехол для брелока
+чехол брелка=чехол для брелока
+чехол кейс брелока=чехол для брелока
+
+# Корпуса / Запчасти
+корпус=корпус,корпус брелока,корпус пульта,корпус ключа,shell,case
+корпус брелка=корпус брелока
+корпус ключа пульта=корпус брелока
+корпус пультика=корпус брелока
+
+# Значки / Брошки / PIN
+значок=значок,значки,pin,пин-значок,брошка,брошь
+значек=значок
+значка=значок
+брош=значок
+
+# Блокноты
+блокнот=блокнот,блокноты,ежедневник,записная книжка
+блакнот=блокнот
+блок нот=блокнот
+
+# Аксессуары
+брелок-карабин=брелок,брелок-аксессуар,ремешок для ключей,лента для ключей,ключница,лейбл,бирка
+ключница=брелок
+ремешок для ключей=брелок
+ленточка=ремешок
+бирка ключей=брелок
+
+# Misc common typos/aliases
+iphon=iphone,айфон,iphone
+рудкщт=телефон",
 
             'enable_search_logging' => 1,
 
@@ -216,6 +274,35 @@ class BeThemeSmartSearch_Support_Options {
 
     }
 
+
+
+    /**
+     * Return a canonical mapping for synonym/typo rules.
+     * Maps variant -> canonical term (all lowercase, normalized).
+     */
+    public static function get_synonyms_canonical_map( $options = null ) {
+        if ( ! $options ) {
+            $options = self::get();
+        }
+
+        $rules = self::parse_synonyms_rules( isset($options['synonyms_rules']) ? $options['synonyms_rules'] : '' );
+
+        $map = array();
+
+        foreach ( $rules as $canonical => $variants ) {
+            $canonical_norm = BeThemeSmartSearch_Search_Normalize::to_lc( $canonical );
+
+            // canonical itself maps to canonical
+            $map[ $canonical_norm ] = $canonical_norm;
+
+            foreach ( $variants as $v ) {
+                $v_norm = BeThemeSmartSearch_Search_Normalize::to_lc( $v );
+                $map[ $v_norm ] = $canonical_norm;
+            }
+        }
+
+        return $map;
+    }
 
 
     /**

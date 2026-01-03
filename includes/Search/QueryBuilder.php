@@ -34,7 +34,7 @@ class BeThemeSmartSearch_Search_QueryBuilder {
         $min_len = isset($options['min_token_length']) ? (int) $options['min_token_length'] : 2;
         $min_len = max(1, min(10, $min_len));
 
-        $tokens_lc = $this->build_tokens_lc($tokens, $min_len);
+        $tokens_lc = $this->build_tokens_lc($tokens, $min_len, $options);
         $token_pool = $this->build_token_pool($tokens, $min_len);
 
         $variants = BeThemeSmartSearch_Search_Variants::build($query, $options);
@@ -386,9 +386,12 @@ class BeThemeSmartSearch_Search_QueryBuilder {
         return $candidate_ids;
     }
 
-    private function build_tokens_lc($tokens, $min_len) {
+    private function build_tokens_lc($tokens, $min_len, $options = array()) {
         $tokens = is_array($tokens) ? $tokens : array();
         $out = array();
+
+        // Build canonical synonyms map (variant -> canonical)
+        $syn_map = BeThemeSmartSearch_Support_Options::get_synonyms_canonical_map($options);
 
         foreach ($tokens as $t) {
             $t = is_string($t) ? trim($t) : '';
@@ -398,7 +401,16 @@ class BeThemeSmartSearch_Search_QueryBuilder {
             if (BeThemeSmartSearch_Search_Normalize::length($t) < $min_len) {
                 continue;
             }
-            $out[] = BeThemeSmartSearch_Search_Normalize::to_lc($t);
+
+            // Normalize token (strip diacritics, normalize whitespace) and lowercase
+            $tok_norm = BeThemeSmartSearch_Search_Normalize::to_lc($t);
+
+            // Map via synonyms canonical map if possible
+            if (isset($syn_map[$tok_norm])) {
+                $tok_norm = $syn_map[$tok_norm];
+            }
+
+            $out[] = $tok_norm;
         }
 
         return array_values(array_unique(array_filter($out)));

@@ -14,10 +14,37 @@ class BeThemeSmartSearch_Search_Normalize {
 
     public static function to_lc($value) {
         $value = (string) $value;
+        // Normalize unicode and strip combining marks first (e.g. our example 'нашивкӓ').
+        $value = self::normalize_text($value);
         if (self::has_mb()) {
             return mb_strtolower($value, 'UTF-8');
         }
         return strtolower($value);
+    }
+
+    /**
+     * Perform Unicode normalization and remove combining diacritic marks.
+     * Also collapse multiple spaces and trim.
+     */
+    public static function normalize_text($value) {
+        $value = is_string($value) ? $value : '';
+        if ($value === '') {
+            return '';
+        }
+
+        // If intl Normalizer is available, normalize to NFC
+        if (class_exists('Normalizer')) {
+            $value = Normalizer::normalize($value, Normalizer::FORM_C);
+        }
+
+        // Remove any combining marks (diacritics)
+        $value = preg_replace('/\p{M}/u', '', $value);
+
+        // Normalize whitespace
+        $value = preg_replace('/\s+/u', ' ', $value);
+        $value = trim($value);
+
+        return $value;
     }
 
     public static function length($value) {
