@@ -289,7 +289,12 @@ iphon=iphone,айфон,iphone
             $options = self::get();
         }
 
-        $rules = self::parse_synonyms_rules( isset($options['synonyms_rules']) ? $options['synonyms_rules'] : '' );
+        $raw = isset($options['synonyms_rules']) ? $options['synonyms_rules'] : '';
+        if (class_exists('BeThemeSmartSearch_Search_Variants') && method_exists('BeThemeSmartSearch_Search_Variants', 'parse_synonyms_rules')) {
+            $rules = BeThemeSmartSearch_Search_Variants::parse_synonyms_rules($raw);
+        } else {
+            $rules = self::parse_synonyms_rules($raw);
+        }
 
         $map = array();
 
@@ -302,6 +307,64 @@ iphon=iphone,айфон,iphone
             foreach ( $variants as $v ) {
                 $v_norm = BeThemeSmartSearch_Search_Normalize::to_lc( $v );
                 $map[ $v_norm ] = $canonical_norm;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Parse synonyms rules (fallback for older installs or when Variants helper unavailable).
+     * Format: one rule per line, `from=to1,to2` or `from => to1, to2`.
+     */
+    public static function parse_synonyms_rules($raw) {
+        $raw = is_string($raw) ? trim($raw) : '';
+        if ($raw === '') {
+            return array();
+        }
+
+        $lines = preg_split("/\r\n|\n|\r/", $raw);
+        $map = array();
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || strpos($line, '#') === 0) {
+                continue;
+            }
+
+            $line = str_replace('=>', '=', $line);
+            $parts = explode('=', $line, 2);
+            if (count($parts) !== 2) {
+                continue;
+            }
+
+            $from = trim($parts[0]);
+            $to = trim($parts[1]);
+            if ($from === '' || $to === '') {
+                continue;
+            }
+
+            $targets = preg_split('/\s*,\s*/', $to, -1, PREG_SPLIT_NO_EMPTY);
+            if (empty($targets)) {
+                continue;
+            }
+
+            $from_norm = BeThemeSmartSearch_Search_Normalize::to_lc($from);
+            foreach ($targets as $t) {
+                $t = trim($t);
+                if ($t === '') {
+                    continue;
+                }
+                $map[$from_norm][] = $t;
+            }
+        }
+
+        foreach ($map as $k => $vals) {
+            $vals = array_values(array_unique(array_filter($vals)));
+            if (!empty($vals)) {
+                $map[$k] = $vals;
+            } else {
+                unset($map[$k]);
             }
         }
 
