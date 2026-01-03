@@ -156,6 +156,19 @@
   };
 
   /**
+   * Trigger a reindex operation (clears transients and bumps an index version).
+   * @returns {Promise<*>}
+   */
+  api.reindex = function () {
+    var cfg = getAdminConfig();
+    return api.request({
+      path: String(cfg.rest_path || "") + "/reindex",
+      method: "POST",
+      requestKey: "reindex",
+    });
+  };
+
+  /**
    * Load analytics data.
    * @param {number} days
    * @param {number} limit
