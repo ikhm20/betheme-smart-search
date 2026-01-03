@@ -134,6 +134,15 @@ class BeThemeSmartSearch_Rest_Suggest {
 
                         if (!empty($fb_products)) {
                             error_log(sprintf('BeTheme Smart Search: suggest fallback returned %d products after relaxing coverage for query="%s"', count($fb_products), substr($q, 0, 200)));
+                        } else {
+                            // If relaxed search for variants[0] still yields nothing, try a relaxed search using the full original query.
+                            error_log(sprintf('BeTheme Smart Search: suggest relaxed search for variants[0] returned 0; retrying relaxed search with full query for "%s"', substr($q, 0, 200)));
+                            $fb_products = $this->query_builder->search_products_v2($q, $limit + 4, $opts_relaxed);
+                            if (!empty($fb_products)) {
+                                error_log(sprintf('BeTheme Smart Search: suggest fallback returned %d products after relaxing coverage for full query="%s"', count($fb_products), substr($q, 0, 200)));
+                            } else {
+                                error_log(sprintf('BeTheme Smart Search: suggest fallback still empty after full-query relaxed retry for "%s"', substr($q, 0, 200)));
+                            }
                         }
                     }
 
