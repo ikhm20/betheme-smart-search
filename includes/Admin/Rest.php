@@ -252,9 +252,20 @@ class BeThemeSmartSearch_Admin_REST {
             sort($meta_keys);
             $mode = BeThemeSmartSearch_Support_Options::normalize_code_match_mode(isset($options['code_match_mode']) ? $options['code_match_mode'] : null);
 
-            // Only apply meta_key search for code-like queries (SKU/barcode) or when explicitly enabled by option
+            // Only apply meta_key search for code-like queries (SKU/barcode) or when explicitly enabled by option.
+            // To avoid over-restrictive filtering for natural multi-word queries, if the option is enabled we only
+            // apply meta search for single-token queries (typical for codes/SKUs).
             $meta_query = array();
-            $apply_meta_search = BeThemeSmartSearch_Search_Normalize::is_code_like_query($q) || (!empty($options['enhance_shop_search_query']));
+            $apply_meta_search = false;
+            if (BeThemeSmartSearch_Search_Normalize::is_code_like_query($q)) {
+                $apply_meta_search = true;
+            } elseif (!empty($options['enhance_shop_search_query'])) {
+                $tokens = BeThemeSmartSearch_Search_Normalize::tokenize($q, $options);
+                if (count($tokens) === 1) {
+                    $apply_meta_search = true;
+                }
+            }
+
             if ($apply_meta_search) {
                 $meta_query = BeThemeSmartSearch_Search_MetaQuery::build_for_variants($variants, $meta_keys, $mode);
             }
