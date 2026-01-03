@@ -402,6 +402,10 @@
       showSql = _useStateShowSql[0],
       setShowSql = _useStateShowSql[1];
 
+    var _useStateReindex = useState(false),
+      reindexLoading = _useStateReindex[0],
+      setReindexLoading = _useStateReindex[1];
+
     return el(
       Fragment,
       null,
@@ -456,6 +460,29 @@
                     },
                   },
                   "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c JSON"
+                ),
+                el(
+                  Button,
+                  {
+                    variant: "secondary",
+                    isBusy: reindexLoading,
+                    onClick: function () {
+                      if (reindexLoading) return;
+                      setReindexLoading(true);
+                      api.reindex()
+                        .then(function (res) {
+                          var v = res && res.index_version ? res.index_version : null;
+                          window.alert("Reindex triggered. index_version=" + (v === null ? "?" : String(v)));
+                        })
+                        .catch(function (err) {
+                          window.alert("Reindex failed: " + (err && err.message ? err.message : String(err)));
+                        })
+                        .finally(function () {
+                          setReindexLoading(false);
+                        });
+                    },
+                  },
+                  "Reindex"
                 )
               ),
               showDebug &&
