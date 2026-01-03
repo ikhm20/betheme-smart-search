@@ -241,6 +241,18 @@ function App() {
       benchmarkResult = _useStateBenchmarkResult[0],
       setBenchmarkResult = _useStateBenchmarkResult[1];
 
+    var _useStateTestQuery = useState(""),
+      testQuery = _useStateTestQuery[0],
+      setTestQuery = _useStateTestQuery[1];
+
+    var _useStateTestLoading = useState(false),
+      testLoading = _useStateTestLoading[0],
+      setTestLoading = _useStateTestLoading[1];
+
+    var _useStateTestResult = useState(null),
+      testResult = _useStateTestResult[0],
+      setTestResult = _useStateTestResult[1];
+
     function timedFetch(promiseFactory) {
       var started = window.performance && performance.now ? performance.now() : Date.now();
       return Promise.resolve()
